@@ -46,4 +46,3 @@ if __name__ == "__main__":
         library.setWindowState(Qt.WindowState.WindowMinimized)
     ret = app.exec()
     app.deleteLater()
-

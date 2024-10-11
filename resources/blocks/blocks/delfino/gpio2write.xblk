@@ -1,11 +1,11 @@
 {
-  "lib": "SAMD21",
-  "name": "AnalogIn",
-  "ip": 0,
-  "op": 1,
-  "stin": 0,
+  "lib": "Delfino",
+  "name": "GPIO_WRITE",
+  "ip": 1,
+  "op": 0,
+  "stin": 1,
   "stout": 0,
-  "icon": "AD",
-  "params": "brikiAIBlk|Pin:26:int|Umin [V]:0.0:double|Umax [V]:3.3:double",
-  "help": "Parameters\nInput: Channel with value 0 to 5\n\nPIN\nA0   ->   26\t\nA1   ->   27\nA2   ->   28\nA3   ->   29\nA4   ->   30\nA5   ->   31\nA9   ->   20   (Microphone)\n\nThe input signal (0..3V) is automatically mapped to a value between Umin and Umax.\n"
+  "icon": "",
+  "params": "brikiGPIOBlk|Pin:31|State:0",
+  "help": "Parameters\nPin: Select the GPIO pin to control the LED (e.g., 31 for GPIO31 on TI Launchpad)\nState: 0 to turn off, 1 to turn on the LED\nExample: GPIO31 controls the onboard LED.\n"
 }
