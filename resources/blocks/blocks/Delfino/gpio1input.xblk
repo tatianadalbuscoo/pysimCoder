@@ -1,0 +1,11 @@
+{
+  "lib": "Delfino",
+  "name": "GPIO_INPUT",
+  "ip": 0,
+  "op": 1,
+  "stin": 0,
+  "stout": 0,
+  "icon": "SWITCH",
+  "params": "inputGPIOblk|PIN:6|State:0",
+  "help": "Parameters:\nPin: Select the GPIO pin to read the input (e.g., 6 for GPIO6 on TI Launchpad)\nState: Will be set to 0 or 1 based on the input pin state.\nExample: GPIO6 reads the state of a button or sensor.\n"
+}

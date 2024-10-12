@@ -12,89 +12,62 @@ $(MAIN).c: $(MAINDIR)/$(MAIN).c $(MODEL).c
 	cp $< .
 
 # Directories
-INODIR = $(ARDUINO_TOOLDIR)/packages/arduino/tools
+INODIR = $(TI_TOOLDIR)/packages/ti/tools
 
-PACKAGES = $(ARDUINO_TOOLDIR)/packages
+PACKAGES = $(TI_TOOLDIR)/packages
 
 # Tools
-BIN_DIR = /usr/bin
-#BIN_DIR = /home/bucher/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/
+BIN_DIR = /opt/ti/ccs/tools/compiler/ti-cgt-c2000_20.2.1.LTS/bin
+GCC = $(BIN_DIR)/cl2000
+LD = $(BIN_DIR)/cl2000
+OBJCP = $(BIN_DIR)/hex2000
+SIZE = $(BIN_DIR)/size2000
 
-GCC = $(BIN_DIR)/arm-none-eabi-gcc
-G++ =$(BIN_DIR)/arm-none-eabi-g++
-CPU = -mcpu=cortex-m0plus
-
-LD = $(BIN_DIR)/arm-none-eabi-gcc
-OBJCP =  $(BIN_DIR)/arm-none-eabi-objcopy
-SIZE = $(BIN_DIR)/arm-none-eabi-size
-
-MBCTOOL = $(PACKAGES)/briki/tools/mbctool/2.0.1/bin/mbctool
-MBCDIR = $(ARDUINO_TOOLDIR)/packages/briki/hardware/mbc-wb/2.1.2
+TI_FLASH_TOOL = $(PACKAGES)/ti/uniflash/uniflash.sh
 
 # Command flags
 GCC_FLAGS = \
--mthumb -c -g -Os -w -std=gnu++11 -ffunction-sections -fdata-sections \
--fno-threadsafe-statics -nostdlib \
---param max-inline-insns-single=500 -fno-rtti -fno-exceptions -MMD 
+-v28 -ml -g -O2 -c \
+--float_support=fpu32 \
+--define=CPU_Delfino \
+--define=USE_TI_DRV \
+--define=F2837xD 
 
 DEFINES = \
 -DMODEL=$(MODEL) \
--DBRIKI_MBC_WB_SAMD \
--DF_CPU=48000000L \
--DARDUINO=10813 \
--DBRIKI_ABC \
--DARDUINO_ARCH_MBC-WB \
--DARDUINO_ARCH_SAMD \
--DBRIKI_ABC \
--D__SAMD21G18A__ \
--DUSB_VID=0x3112 \
--DUSB_PID=0x0001 \
--DUSBCON \
--DUSB_MANUFACTURER="Meteca SA" \
--DUSB_PRODUCT="Briki MBC-WB"
+-DDELFINO_F2837xD \
+-DF_CPU=200000000L \
+-DARDUINO=10813
 
 INCLUDES = \
--I$(MBCDIR)/cores/samd21 \
--I$(ARDUINO_DIR)/hardware/arduino/acr/cores/arduino \
--I$(INODIR)/CMSIS/4.5.0/CMSIS/Include/ \
--I$(INODIR)/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/ \
--I$(SAMD21_HOME)/include \
+-I$(TI_TOOLDIR)/driverlib \
+-I$(TI_TOOLDIR)/include \
 -I$(PYSUPSICTRL)/CodeGen/Common/include
 
 
-LD_FLAG1 = -Os -Wl,--gc-sections -save-temps
-LD_FLAG2 = -mthumb -Wl,--cref -Wl,--check-sections -Wl,--gc-sections -Wl,--unresolved-symbols=report-all \
--Wl,--warn-common -Wl,--warn-section-align
-LD_FLAG3 = -Wl,--start-group
-LD_FLAG4 = -Wl,--end-group
-SPEC = --specs=nano.specs --specs=nosys.specs
-MAPS = -Wl,-Map,$(MODEL).map
+LD_FLAG1 = -O2 -Wl,-u -save-temps
+LD_FLAG2 = -ml -Wl,--cref -Wl,--warn-section-align
 
-BOOTLOADER = -T$(MBCDIR)/variants/briki_mbcwb_samd21/linker_scripts/gcc/flash_with_bootloader.ld
+# Linker Script
+LINKER_SCRIPT = $(PACKAGES)/f2837xd/common/lnk_delfino.ld
 
 # Libraries
-LIBDIR1 = $(SAMD21_HOME)/lib
-LIBDIR2 = $(ARDUINO_TOOLDIR)/packages/arduino/tools/CMSIS/4.5.0/CMSIS/Lib/GCC/
-LIBS = -larm_cortexM0l_math -lm $(LIBDIR1)/core.a
-MYLIBS =  $(LIBDIR1)/SAMD21lib.a
+LIBDIR1 = $(TI_TOOLDIR)/lib
+LIBS = -lmath -lC2000ware
 
 %.o: %.c
-	$(GCC) $< $(CPU) $(GCC_FLAGS) $(DEFINES) $(INCLUDES) -o $@
+	$(GCC) $< $(GCC_FLAGS) $(DEFINES) $(INCLUDES) -o $@
 
 %.o: %.cpp
-	$(G++) $< $(CPU) $(GCC_FLAGS) $(DEFINES) $(INCLUDES) -o $(MODEL).o
+	$(G++) $< $(GCC_FLAGS) $(DEFINES) $(INCLUDES) -o $(MODEL).o
 
-$(MODEL).hex: $(OBJSSTAN) $(MYLIBS)
-	$(LD) $(LD_FLAG1) $(BOOTLOADER) $(MAPS) $(SPEC) $(CPU) $(LD_FLAG2) \
-	-o $(MODEL).elf $(OBJSSTAN) $(LD_FLAG3) -L$(LIBDIR2) $(LIBS) $(MYLIBS) $(LIBDIR1)/core.a $(LD_FLAG4)
-	$(OBJCP) -O binary $(MODEL).elf $(MODEL).bin
-	$(OBJCP) -O ihex -R .eeprom $(MODEL).elf $(MODEL).hex
-	$(SIZE) -A $(MODEL).elf
+$(MODEL).hex: $(OBJSSTAN)
+	$(LD) $(LD_FLAG1) $(LINKER_SCRIPT) $(LD_FLAG2) \
+	-o $(MODEL).out $(OBJSSTAN) $(LIBS)
+	$(OBJCP) -i $(MODEL).out -o $(MODEL).hex
 
 upload: $(MODEL).hex
-	xterm -e $(MBCTOOL) -d samd -p /dev/ttyACM0 -s 1500000 -u $(MODEL).bin
+	$(TI_FLASH_TOOL) --program $(MODEL).hex --target Delfino_F2837xD --verify
 
 clean:
-	rm -f *.o *.d *.map *.elf *.bin *.hex
-
-
+	rm -f *.o *.d *.out *.hex
