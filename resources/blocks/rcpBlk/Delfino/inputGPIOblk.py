@@ -20,5 +20,5 @@ def inputGPIOblk(pout, gpio_number, state):
         raise ValueError("Block should have 1 output pin; received %i." % size(pout))
     
     # blk creation with pout (output), gpio_number (input pin), and state
-    blk = RCPblk('inputGPIOb', [], pout, [state, gpio_number], 0, [], [])
+    blk = RCPblk('inputGPIOblk', [], pout, [state, gpio_number], 0, [], [])
     return blk
