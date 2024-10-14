@@ -16,20 +16,23 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 */
 
+
+// esegue l'inizializzazione del GPIO in input e la lettura dello stato del GPIO (alto o basso).
+
 #include <pyblock.h>
 #include <F2837xD_device.h>   // Libreria specifica per Delfino
 #include <F2837xD_gpio.h>     // Funzioni GPIO per Delfino
+
+
 
 static void init(python_block* block)
 {
     int* intPar = block->intPar;
     int gpioPin = intPar[1];  // Numero del GPIO passato come parametro
 
-    // Configura il GPIO come input
-    EALLOW;
-    GpioCtrlRegs.GPAMUX1.bit.GPIO6 = 0;  // Configura GPIO come GPIO generico
-    GpioCtrlRegs.GPADIR.bit.GPIO6 = 0;    // Imposta come input
-    EDIS;
+
+    GPIO_SetupPinMux(gpioPin, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(gpioPin, GPIO_INPUT, GPIO_PULLUP);
 
     intPar[1] = gpioPin;  // Salva il numero di GPIO configurato
 }
@@ -42,8 +45,8 @@ static void inout(python_block* block)
 
     int gpioPin = intPar[1];  // Numero del GPIO
 
-    // Leggi lo stato del GPIO
-    if (GpioDataRegs.GPADAT.bit.GPIO6 == 1) {
+    // Leggi lo stato del GPIO usando il numero di pin passato come parametro
+    if (gpioPin < 32 && GpioDataRegs.GPADAT.all & (1 << gpioPin)) {
         y[0] = 1.0;  // Imposta l'output a 1 se il GPIO è alto
     }
     else {
@@ -53,10 +56,7 @@ static void inout(python_block* block)
 
 static void end(python_block* block)
 {
-    int* intPar = block->intPar;
-    int gpioPin = intPar[1];  // Numero del GPIO
 
-    // Puoi fare una pulizia del blocco qui, se necessario
 }
 
 void inputGPIOblk(int flag, python_block* block)

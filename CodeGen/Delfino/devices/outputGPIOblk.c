@@ -16,7 +16,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 */
 
-#include <pyblock.h>
+//#include <pyblock.h>
 #include <F2837xD_device.h>   // Libreria specifica per Delfino
 #include <F2837xD_gpio.h>     // Funzioni GPIO per Delfino
 
@@ -25,11 +25,8 @@ static void init(python_block* block)
     int* intPar = block->intPar;
     int gpioPin = intPar[1];  // Numero del GPIO passato come parametro
 
-    // Configura il GPIO come output
-    EALLOW;
-    GpioCtrlRegs.GPAMUX1.bit.GPIO031 = 0; 
-    GpioCtrlRegs.GPADIR.bit.GPIO31 = 1;  // Imposta come output
-    EDIS;
+    GPIO_SetupPinMux(gpioPin, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(gpioPin, GPIO_OUTPUT, GPIO_PUSHPULL);
 
     intPar[1] = gpioPin;
 }
@@ -42,12 +39,22 @@ static void inout(python_block* block)
 
     int gpioPin = intPar[1];  // Numero del GPIO
 
-    // Controlla l'input e imposta lo stato del GPIO
+    // Controlla l'input e imposta lo stato del GPIO passato come parametro
     if (u[0] > realPar[0]) {
-        GpioDataRegs.GPASET.bit.GPIO31 = 1;  
+        if (gpioPin < 32) {
+            GpioDataRegs.GPASET.all |= (1 << gpioPin);  // Imposta il pin alto
+        }
+        else if (gpioPin < 64) {
+            GpioDataRegs.GPBSET.all |= (1 << (gpioPin - 32));  // Imposta il pin alto per GPIOB
+        }
     }
     else {
-        GpioDataRegs.GPACLEAR.bit.GPIO31 = 1;  
+        if (gpioPin < 32) {
+            GpioDataRegs.GPACLEAR.all |= (1 << gpioPin);  // Imposta il pin basso
+        }
+        else if (gpioPin < 64) {
+            GpioDataRegs.GPBCLEAR.all |= (1 << (gpioPin - 32));  // Imposta il pin basso per GPIOB
+        }
     }
 }
 
@@ -57,7 +64,12 @@ static void end(python_block* block)
     int gpioPin = intPar[1];  // Numero del GPIO
 
     // Spegni il GPIO alla fine
-    GpioDataRegs.GPACLEAR.bit.GPIO31 = 1;  // Sostituisci con il numero di GPIO
+    if (gpioPin < 32) {
+        GpioDataRegs.GPACLEAR.all |= (1 << gpioPin);  // Imposta il pin basso
+    }
+    else if (gpioPin < 64) {
+        GpioDataRegs.GPBCLEAR.all |= (1 << (gpioPin - 32));  // Imposta il pin basso per GPIOB
+    }
 }
 
 void outputGPIOblk(int flag, python_block* block)
