@@ -1,73 +1,40 @@
-MODEL = $$MODEL$$
+# Nome del modello generato da PySimCoder
+MODEL = Es1
 
-all: $(MODEL).hex upload
+# Compilatore e opzioni di compilazione
+CC = armcl
+CFLAGS = -g -O2 -Iinclude -I. -I$(COMMON_INC) -DMODEL=$(MODEL)
 
-MAIN = brikiSamd21RT
-PYCODEGEN = $(PYSUPSICTRL)/CodeGen
-MAINDIR = $(PYCODEGEN)/src
+# Percorsi
+PYSIMCODER_DIR = C:/Users/lucia/Desktop/pysimCoder/CodeGen/Delfino/devices
+ES1_GEN_DIR = C:/Users/lucia/Desktop/Es1_gen
+PROJECT_DIR = C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/examples/cpu1/adc_soc_epwm/cpu01
+CCS_DIR = $(PROJECT_DIR)/ccs
 
-OBJSSTAN = $(MODEL).o $(MAIN).o 
+# File oggetto
+OBJS = $(ES1_GEN_DIR)/Es1.o $(PYSIMCODER_DIR)/inputGPIOblk.o $(PYSIMCODER_DIR)/outputGPIOblk.o $(CCS_DIR)/button.o $(CCS_DIR)/led.o
 
-$(MAIN).c: $(MAINDIR)/$(MAIN).c $(MODEL).c
-	cp $< .
+# Librerie necessarie (sostituisci con le librerie specifiche se necessario)
+LIBS = -lF2837xD_SysCtrl -lF2837xD_Gpio -lF2837xD_PieCtrl -lm
 
-# Directories
-INODIR = $(TI_TOOLDIR)/packages/ti/tools
+# Obiettivo finale
+all: $(MODEL).out
 
-PACKAGES = $(TI_TOOLDIR)/packages
+# Compilazione degli oggetti
+$(MODEL).out: $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-# Tools
-BIN_DIR = /opt/ti/ccs/tools/compiler/ti-cgt-c2000_20.2.1.LTS/bin
-GCC = $(BIN_DIR)/cl2000
-LD = $(BIN_DIR)/cl2000
-OBJCP = $(BIN_DIR)/hex2000
-SIZE = $(BIN_DIR)/size2000
-
-TI_FLASH_TOOL = $(PACKAGES)/ti/uniflash/uniflash.sh
-
-# Command flags
-GCC_FLAGS = \
--v28 -ml -g -O2 -c \
---float_support=fpu32 \
---define=CPU_Delfino \
---define=USE_TI_DRV \
---define=F2837xD 
-
-DEFINES = \
--DMODEL=$(MODEL) \
--DDELFINO_F2837xD \
--DF_CPU=200000000L \
--DARDUINO=10813
-
-INCLUDES = \
--I$(TI_TOOLDIR)/driverlib \
--I$(TI_TOOLDIR)/include \
--I$(PYSUPSICTRL)/CodeGen/Common/include
-
-
-LD_FLAG1 = -O2 -Wl,-u -save-temps
-LD_FLAG2 = -ml -Wl,--cref -Wl,--warn-section-align
-
-# Linker Script
-LINKER_SCRIPT = $(PACKAGES)/f2837xd/common/lnk_delfino.ld
-
-# Libraries
-LIBDIR1 = $(TI_TOOLDIR)/lib
-LIBS = -lmath -lC2000ware
-
+# Regole per la compilazione dei file oggetto
 %.o: %.c
-	$(GCC) $< $(GCC_FLAGS) $(DEFINES) $(INCLUDES) -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
-%.o: %.cpp
-	$(G++) $< $(GCC_FLAGS) $(DEFINES) $(INCLUDES) -o $(MODEL).o
+# Regole specifiche per inputGPIOblk.o e outputGPIOblk.o
+$(PYSIMCODER_DIR)/inputGPIOblk.o: $(PYSIMCODER_DIR)/inputGPIOblk.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(MODEL).hex: $(OBJSSTAN)
-	$(LD) $(LD_FLAG1) $(LINKER_SCRIPT) $(LD_FLAG2) \
-	-o $(MODEL).out $(OBJSSTAN) $(LIBS)
-	$(OBJCP) -i $(MODEL).out -o $(MODEL).hex
+$(PYSIMCODER_DIR)/outputGPIOblk.o: $(PYSIMCODER_DIR)/outputGPIOblk.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-upload: $(MODEL).hex
-	$(TI_FLASH_TOOL) --program $(MODEL).hex --target Delfino_F2837xD --verify
-
+# Pulizia dei file oggetto
 clean:
-	rm -f *.o *.d *.out *.hex
+	rm -f $(OBJS) $(MODEL).out

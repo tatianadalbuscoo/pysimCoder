@@ -16,47 +16,30 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 */
 
-
-// esegue l'inizializzazione del GPIO in input e la lettura dello stato del GPIO (alto o basso).
-
-#include <pyblock.h>
-#include <F2837xD_device.h>   // Libreria specifica per Delfino
-#include <F2837xD_gpio.h>     // Funzioni GPIO per Delfino
-
-
+#include "button.h"  // Includi il modulo del pulsante
 
 static void init(python_block* block)
 {
-    int* intPar = block->intPar;
-    int gpioPin = intPar[1];  // Numero del GPIO passato come parametro
-
-
-    GPIO_SetupPinMux(gpioPin, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(gpioPin, GPIO_INPUT, GPIO_PULLUP);
-
-    intPar[1] = gpioPin;  // Salva il numero di GPIO configurato
+    // Inizializza il pulsante usando il modulo button.c
+    Button_Init();
 }
 
 static void inout(python_block* block)
 {
-    double* realPar = block->realPar;
-    int* intPar = block->intPar;
-    double* y = block->y[0];  // Output del blocco (stato del GPIO)
+    double* y = block->y[0];  // Output del blocco (stato del pulsante)
 
-    int gpioPin = intPar[1];  // Numero del GPIO
-
-    // Leggi lo stato del GPIO usando il numero di pin passato come parametro
-    if (gpioPin < 32 && GpioDataRegs.GPADAT.all & (1 << gpioPin)) {
-        y[0] = 1.0;  // Imposta l'output a 1 se il GPIO è alto
+    // Usa la funzione `Button_IsPressed()` per verificare lo stato del pulsante
+    if (Button_IsPressed()) {
+        y[0] = 1.0;  // Imposta l'output a 1 se il pulsante è premuto
     }
     else {
-        y[0] = 0.0;  // Imposta l'output a 0 se il GPIO è basso
+        y[0] = 0.0;  // Imposta l'output a 0 se il pulsante non è premuto
     }
 }
 
 static void end(python_block* block)
 {
-
+    // Nessuna azione necessaria alla fine
 }
 
 void inputGPIOblk(int flag, python_block* block)
