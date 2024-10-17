@@ -10,75 +10,88 @@ INCLUDES = -IC:/ti/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include \
            -IC:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/include
 
 BINDIR = bin
+OBJDIR = C:/Users/lucia/Desktop/obj
 SRCDIR_COMMON = C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source
 SRCDIR_HEADERS = C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/source
 
 # Obiettivo finale
 TARGET = $(BINDIR)/adc_soc_epwm_cpu01.out
 
-# Lista degli oggetti (direttamente sul desktop)
-OBJS = Es1.obj F2837xD_Adc.obj F2837xD_CodeStartBranch.obj \
-       F2837xD_DefaultISR.obj F2837xD_GlobalVariableDefs.obj \
-       F2837xD_Gpio.obj F2837xD_Ipc.obj F2837xD_PieCtrl.obj \
-       F2837xD_PieVect.obj F2837xD_SysCtrl.obj F2837xD_usDelay.obj \
-       adc_soc_epwm_cpu01.obj button.obj inputGPIOblk.obj \
-       led.obj outputGPIOblk.obj
+OBJS = $(OBJDIR)/Es1.obj $(OBJDIR)/F2837xD_Adc.obj $(OBJDIR)/F2837xD_CodeStartBranch.obj \
+       $(OBJDIR)/F2837xD_DefaultISR.obj $(OBJDIR)/F2837xD_GlobalVariableDefs.obj \
+       $(OBJDIR)/F2837xD_Gpio.obj $(OBJDIR)/F2837xD_Ipc.obj $(OBJDIR)/F2837xD_PieCtrl.obj \
+       $(OBJDIR)/F2837xD_PieVect.obj $(OBJDIR)/F2837xD_SysCtrl.obj $(OBJDIR)/F2837xD_usDelay.obj \
+       $(OBJDIR)/adc_soc_epwm_cpu01.obj $(OBJDIR)/button.obj $(OBJDIR)/inputGPIOblk.obj \
+       $(OBJDIR)/led.obj $(OBJDIR)/outputGPIOblk.obj
 
-# Regola predefinita
+# Regola che crea la cartella bin e compila il target
 all: $(TARGET)
 
-# Compilare i file C in oggetti (sul desktop)
-%.obj: C:/Users/lucia/Desktop/%.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare i file C in oggetti nella cartella obj sul Desktop
+$(OBJDIR)/%.obj: C:/Users/lucia/Desktop/%.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-# Compilare F2837xD_Adc.c dal percorso corretto (sul desktop)
-F2837xD_Adc.obj: $(SRCDIR_COMMON)/F2837xD_Adc.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_Adc.c
+$(OBJDIR)/F2837xD_Adc.obj: $(SRCDIR_COMMON)/F2837xD_Adc.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-# Compilare F2837xD_DefaultISR.c dal percorso corretto (sul desktop)
-F2837xD_DefaultISR.obj: $(SRCDIR_COMMON)/F2837xD_DefaultISR.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_DefaultISR.c
+$(OBJDIR)/F2837xD_DefaultISR.obj: $(SRCDIR_COMMON)/F2837xD_DefaultISR.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-# Compilare F2837xD_GlobalVariableDefs.c dal percorso corretto (sul desktop)
-F2837xD_GlobalVariableDefs.obj: $(SRCDIR_HEADERS)/F2837xD_GlobalVariableDefs.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_GlobalVariableDefs.c
+$(OBJDIR)/F2837xD_GlobalVariableDefs.obj: $(SRCDIR_HEADERS)/F2837xD_GlobalVariableDefs.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-# Compilare F2837xD_Gpio.c dal percorso corretto (sul desktop)
-F2837xD_Gpio.obj: $(SRCDIR_COMMON)/F2837xD_Gpio.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_Gpio.c
+$(OBJDIR)/F2837xD_Gpio.obj: $(SRCDIR_COMMON)/F2837xD_Gpio.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-# Compilare F2837xD_Ipc.c dal percorso corretto (sul desktop)
-F2837xD_Ipc.obj: $(SRCDIR_COMMON)/F2837xD_Ipc.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_Ipc.c
+$(OBJDIR)/F2837xD_Ipc.obj: $(SRCDIR_COMMON)/F2837xD_Ipc.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-F2837xD_PieCtrl.obj: $(SRCDIR_COMMON)/F2837xD_PieCtrl.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_PieCtrl.c
+$(OBJDIR)/F2837xD_PieCtrl.obj: $(SRCDIR_COMMON)/F2837xD_PieCtrl.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-F2837xD_PieVect.obj: $(SRCDIR_COMMON)/F2837xD_PieVect.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_PieVect.c
+$(OBJDIR)/F2837xD_PieVect.obj: $(SRCDIR_COMMON)/F2837xD_PieVect.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-F2837xD_SysCtrl.obj: $(SRCDIR_COMMON)/F2837xD_SysCtrl.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_SysCtrl.c 
+$(OBJDIR)/F2837xD_SysCtrl.obj: $(SRCDIR_COMMON)/F2837xD_SysCtrl.c | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(CFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-#adc_soc_epwm_cpu01.obj: C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xs/examples/cpu1/adc_soc_epwm/cpu01/adc_soc_epwm_cpu01.c
-	#$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+# Compilare F2837xD_usDelay.asm
+$(OBJDIR)/F2837xD_usDelay.obj: $(SRCDIR_COMMON)/F2837xD_usDelay.asm | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(ASMFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
-F2837xD_usDelay.obj: $(SRCDIR_COMMON)/F2837xD_usDelay.asm
-	$(CC) $(ASMFLAGS) $(INCLUDES) -c $< -o $@
-	
-# Assemblare i file ASM in oggetti (sul desktop)
-%.obj: $(SRCDIR_COMMON)/%.asm
-	$(CC) $(ASMFLAGS) $(INCLUDES) -c $< -o $@
+# Assemblare i file ASM in oggetti nella cartella obj sul Desktop
+$(OBJDIR)/%.obj: $(SRCDIR_COMMON)/%.asm | $(OBJDIR)
+	@cd $(OBJDIR) && $(CC) $(ASMFLAGS) $(INCLUDES) -c $< -o $(notdir $@) && cd -
 
 # Collegare tutti i file oggetto per creare l'eseguibile finale
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJS) | $(BINDIR)
 	$(CC) $(OBJS) -z -madc_soc_epwm_cpu01.map --stack_size=0x100 --warn_sections $(INCLUDES) --reread_libs --xml_link_info="adc_soc_epwm_cpu01_linkInfo.xml" --rom_model -o $(TARGET) \
 	-lC:/ti/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/lib/rts2800_fpu32.lib \
 	-lC:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd \
 	-lC:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd \
 	-lC:/ti/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/lib/libc.a
 
-# Pulizia dei file oggetto ed eseguibile
+# Verifica se la cartella bin esiste, altrimenti la crea
+$(BINDIR):
+	mkdir -p $(BINDIR)
+
+# Verifica se la cartella obj esiste, altrimenti la crea
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+
 clean:
-	cmd /c del /f /q $(BINDIR)\adc_soc_epwm_cpu01.out
-	cmd /c del /f /q *.obj
+	# Rimuovere la cartella bin e obj con tutti i file al loro interno
+	rm -rf $(BINDIR)
+	rm -rf $(OBJDIR)
+	
+	rm -f adc_soc_epwm_cpu01_linkInfo.xml
+	rm -f adc_soc_epwm_cpu01.map
