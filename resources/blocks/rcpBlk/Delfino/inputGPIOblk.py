@@ -1,15 +1,14 @@
 from supsisim.RCPblk import RCPblk
 from numpy import size
 
-def inputGPIOblk(pout, gpio_number, state):
+def inputGPIOblk(pout, gpio_number):
     """
-    Call:   inputGPIOblk(pout, gpio_number, state)
+    Call:   inputGPIOblk(pout, gpio_number)
 
     Parameters
     ----------
        pout: connected output port(s)
        gpio_number: the GPIO pin number (e.g., 6 for GPIO6)
-       state: the current state of the GPIO (0 or 1)
 
     Returns
     -------
@@ -19,6 +18,6 @@ def inputGPIOblk(pout, gpio_number, state):
     if(size(pout) != 1):
         raise ValueError("Block should have 1 output pin; received %i." % size(pout))
     
-    # blk creation with pout (output), gpio_number (input pin), and state
-    blk = RCPblk('inputGPIOblk', [], pout, [state, gpio_number], 0, [], [])
+    # blk creation with pout (output), gpio_number (input pin)
+    blk = RCPblk('inputGPIOblk', [], pout, [0,0], 0, [], [gpio_number])
     return blk

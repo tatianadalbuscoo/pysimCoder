@@ -6,6 +6,6 @@
   "stin": 0,
   "stout": 0,
   "icon": "LED",
-  "params": "outputGPIOblk|Pin:31|State:0",
-  "help": "Parameters\nPin: Select the GPIO pin to control the LED (e.g., 31 for GPIO31 on TI Launchpad)\nState: 0 to turn off, 1 to turn on the LED\nExample: GPIO31 controls the onboard LED.\n"
+  "params": "outputGPIOblk|Pin:31",
+  "help": "Parameters\nPin: Select the GPIO pin to control the LED (e.g. 31 for GPIO31 on TI Launchpad)\nExample: GPIO31 controls the onboard LED.\n"
 }

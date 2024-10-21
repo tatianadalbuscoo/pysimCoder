@@ -17,18 +17,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 */
 
 #include "button.h"  // Includi il modulo del pulsante
+#include "inputGPIOblk.h"
 
 static void init(python_block* block)
 {
-    // Inizializza il pulsante usando il modulo button.c
     Button_Init();
 }
 
 static void inout(python_block* block)
 {
-    double* y = block->y[0];  // Output del blocco (stato del pulsante)
+    // y[0] è il primo output del blocco
+    double* y = block->y[0];
 
-    // Usa la funzione `Button_IsPressed()` per verificare lo stato del pulsante
     if (Button_IsPressed()) {
         y[0] = 1.0;  // Imposta l'output a 1 se il pulsante è premuto
     }

@@ -16,17 +16,18 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 */
 
-#include "led.h"  // Includi il modulo del LED
+#include "led.h"
+#include "outputGPIOblk.h"
 
 static void init(python_block* block)
 {
-    // Inizializza il LED usando il modulo led.c
     LED_Init();
 }
 
 static void inout(python_block* block)
 {
-    double* u = block->u[0];  // Input del blocco (stato del LED)
+    // u[0] primo input del blocco
+    double* u = block->u[0];
 
     // Controlla l'input e imposta lo stato del LED
     if (u[0] > 0.5) {
