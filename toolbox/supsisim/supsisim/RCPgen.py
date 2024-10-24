@@ -21,22 +21,64 @@ import copy
 import sys
 from supsisim.RCPblk import RCPblk
 from supsisim.SHVgen import genSHVtree, genSHVcode, genSHVheader, genSHVend
-import subprocess
+import importlib.util
 import os
 
-# Aggiunto
+def load_module(module_path):
 
-def genProjectStructure(model):
+    """ Reads file source and loads it as a module
 
-    # Ottiene il percorso della directory in cui si trova RCPgen.py
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    script_path = os.path.join(script_dir, 'create_structure.py')  # Usa lo stesso percorso
+    Call: delfino = load_module(script_path)
+
+    Parameters
+    ----------
+    source: file to load
+    module_name: name of module to register in sys.modules
+
+    Returns
+    -------
+    loaded module
+
+    """
+    spec = importlib.util.spec_from_file_location("delfino", module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+def genProjectStructure(model, template):
+
+    """ Reads file source and loads it as a module
     
+    Call: genProjectStructure(model, template)
+
+    Parameters
+    ----------
+    model: Model name
+    template: The template file (e.g., 'delfino.tmf') from which the corresponding Python script 
+    (e.g., 'delfino.py') is derived.
+
+    Returns
+    -------
+    -
+
+    """
+    # Get path to template directory
+    template_path = environ.get('PYSUPSICTRL')
+    
+    # Remove extension to template (.tmf)
+    base_name = os.path.splitext(template)[0]
+    
+    # Create complete path (add .py)
+    script_path = os.path.join(template_path, 'CodeGen', 'templates', base_name + '.py')
+ 
     if os.path.exists(script_path):
-        subprocess.call(['python3', script_path, model])
-    else:
-        raise FileNotFoundError(f"Script {script_path} non trovato")
-#
+        module = load_module(script_path)
+        print("ciao")
+
+        # Check if the name of script is delfino.py
+        if os.path.basename(script_path) == "delfino.py":
+            module.create_project_structure(model)
+ 
 
 
 def genCode(model, Tsamp, blocks, rkstep=10):
@@ -55,10 +97,6 @@ def genCode(model, Tsamp, blocks, rkstep=10):
     -------
     -
     """
-
-    # Prima di generare il codice, crea la struttura del progetto
-    genProjectStructure(model)
-    #
 
     maxNode = 0
     for blk in blocks:
@@ -324,6 +362,7 @@ def genCode(model, Tsamp, blocks, rkstep=10):
     f.write("}\n\n")
     f.close()
 
+
 def genMake(model, template, addObj=''):
     """Generate the Makefile
 
@@ -339,6 +378,10 @@ def genMake(model, template, addObj=''):
     -------
     -
     """
+
+    # If exists a file with the same name of template run the plugin
+    genProjectStructure(model, template)
+
     template_path = environ.get('PYSUPSICTRL')
     fname = template_path + '/CodeGen/templates/' + template
     f = open(fname, 'r')
