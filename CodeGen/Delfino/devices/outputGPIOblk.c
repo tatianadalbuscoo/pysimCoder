@@ -17,7 +17,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 */
 
 #include "led.h"
-#include "outputGPIOblk.h"
+#include "pyblock.h"
 
 static void init(python_block* block)
 {

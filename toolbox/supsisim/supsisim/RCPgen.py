@@ -9,6 +9,8 @@ The following class is provided:
 
 The following commands are provided:
 
+  load_module    - Reads file source and loads it as a module
+  genProjectStructure - Call plugin if exists
   genCode        - Create  C code from BlockDiagram
   genMake        - Generate the Makefile for the C code
   detBlkSeq      - Get the right block sequence for simulation and RT
@@ -73,7 +75,6 @@ def genProjectStructure(model, template):
  
     if os.path.exists(script_path):
         module = load_module(script_path)
-        print("ciao")
 
         # Check if the name of script is delfino.py
         if os.path.basename(script_path) == "delfino.py":
