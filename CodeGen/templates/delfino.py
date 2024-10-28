@@ -4,6 +4,8 @@ import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
 from os import environ
 
+#TO DO: includere solo i blocchi in pysimCoder
+
 def create_cproject_file(model):
 
     project_dir = f"./{model}_project"
@@ -280,7 +282,6 @@ def create_project_structure(model):
 
         f.write("void main(void)\n")
         f.write("{\n")
-        f.write(f"    {model}_init();  // Inizializza i blocchi generati da PySimCoder\n")
         f.write("    setup();\n")
         f.write("    while(1) {}\n")
         f.write(f"    {model}_end();  // Condizione per finire\n")
@@ -297,8 +298,6 @@ def create_project_structure(model):
         f.write("{\n")
         f.write("    InitSysCtrl();\n")
         f.write("    InitGpio();\n")
-        f.write("    Button_Init();\n")
-        f.write("    LED_Init();\n")
         f.write(f"    {model}_init();  // Inizializza i blocchi generati da PySimCoder\n\n")
 
         f.write("    DINT;\n")
