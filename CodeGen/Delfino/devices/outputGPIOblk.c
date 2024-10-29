@@ -22,39 +22,38 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 
 static void init(python_block* block)
 {
-    int pin = block->intPar[0];  // Recupera il numero del pin
+    int pin = block->intPar[0];  // Number of pin
     LED_Init(pin);
 }
 
 static void inout(python_block* block)
 {
-    int pin = block->intPar[0];  // Recupera il numero del pin
-    double* u = block->u[0];     // u[0] primo input del blocco
+    int pin = block->intPar[0];  // Number of pin
+    double* u = block->u[0];     // u[0] first input of the block
 
-    // Controlla l'input e imposta lo stato del LED
+    // Check input and set the Led state
     if (u[0] > 0.5) {
-        LED_On(pin);  // Accendi il LED
-    }
+        LED_On(pin);    // Turn on Led
     else {
-        LED_Off(pin);  // Spegni il LED
+        LED_Off(pin);   // Turn off Led
     }
 }
 
 static void end(python_block* block)
 {
-    int pin = block->intPar[0];  // Recupera il numero del pin
-    LED_Off(pin);                // Spegni il LED alla fine
+    int pin = block->intPar[0];  // Number of pin
+    LED_Off(pin);                // Turn off led
 }
 
 void outputGPIOblk(int flag, python_block* block)
 {
-    if (flag == CG_OUT) {  /* gestione input/output */
+    if (flag == CG_OUT) {  
         inout(block);
     }
-    else if (flag == CG_END) {     /* terminazione */
+    else if (flag == CG_END) {    
         end(block);
     }
-    else if (flag == CG_INIT) {    /* inizializzazione */
+    else if (flag == CG_INIT) {    
         init(block);
     }
 }
