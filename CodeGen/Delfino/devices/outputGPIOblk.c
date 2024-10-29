@@ -19,29 +19,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 #include "led.h"
 #include "pyblock.h"
 
+
 static void init(python_block* block)
 {
-    LED_Init();
+    int pin = block->intPar[0];  // Recupera il numero del pin
+    LED_Init(pin);
 }
 
 static void inout(python_block* block)
 {
-    // u[0] primo input del blocco
-    double* u = block->u[0];
+    int pin = block->intPar[0];  // Recupera il numero del pin
+    double* u = block->u[0];     // u[0] primo input del blocco
 
     // Controlla l'input e imposta lo stato del LED
     if (u[0] > 0.5) {
-        LED_On();  // Accendi il LED
+        LED_On(pin);  // Accendi il LED
     }
     else {
-        LED_Off();  // Spegni il LED
+        LED_Off(pin);  // Spegni il LED
     }
 }
 
 static void end(python_block* block)
 {
-    // Spegni il LED alla fine
-    LED_Off();
+    int pin = block->intPar[0];  // Recupera il numero del pin
+    LED_Off(pin);                // Spegni il LED alla fine
 }
 
 void outputGPIOblk(int flag, python_block* block)

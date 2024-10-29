@@ -4,11 +4,11 @@
 #include "F28x_Project.h"
 
 // Define the LED GPIO pin
-#define LED_GPIO_BLUE 31
+//#define LED_GPIO_BLUE 31
 
 // Function Prototypes
-void LED_Init(void);
-void LED_On(void);
-void LED_Off(void);
+void LED_Init(int pin);
+void LED_On(int pin);
+void LED_Off(int pin);
 
 #endif // LED_H

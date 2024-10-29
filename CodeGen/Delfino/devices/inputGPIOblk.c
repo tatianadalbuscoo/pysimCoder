@@ -21,15 +21,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 
 static void init(python_block* block)
 {
-    Button_Init();
+    int pin = block->intPar[0];  // Recupera il numero del pin
+    Button_Init(pin);            // Inizializza il pulsante sul pin specificato
 }
+
 
 static void inout(python_block* block)
 {
-    // y[0] è il primo output del blocco
-    double* y = block->y[0];
+    int pin = block->intPar[0];  // Recupera il numero del pin
+    double* y = block->y[0];     // y[0] è il primo output del blocco
 
-    if (Button_IsPressed()) {
+    if (Button_IsPressed(pin)) {
         y[0] = 1.0;  // Imposta l'output a 1 se il pulsante è premuto
     }
     else {

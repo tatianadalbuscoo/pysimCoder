@@ -1,14 +1,15 @@
 #include "button.h"
 
-void Button_Init(void)
+void Button_Init(int pin)
 {
     // Set up GPIO for the button
-    GPIO_SetupPinMux(BUTTON_GPIO_PIN, GPIO_MUX_CPU1, 0);
-    GPIO_SetupPinOptions(BUTTON_GPIO_PIN, GPIO_INPUT, GPIO_PULLUP);
+    GPIO_SetupPinMux(pin, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(pin, GPIO_INPUT, GPIO_PULLUP);
 }
 
-Uint16 Button_IsPressed(void)
+Uint16 Button_IsPressed(int pin)
 {
-    // Check if button is pressed (returns 1 if pressed, 0 if not)
-    return GpioDataRegs.GPADAT.bit.GPIO6 != 0;
+    // Controlla se il bottone è premuto sul pin specificato
+    return (GpioDataRegs.GPADAT.all & (1 << pin)) != 0;
 }
+
