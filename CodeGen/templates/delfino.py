@@ -3,8 +3,129 @@ import sys
 import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
 from os import environ
+import json
+from tkinter import Tk, Label, Entry, Button, StringVar, messagebox
+import tkinter as tk
+from tkinter import messagebox
+import tkinter as tk
+from tkinter import filedialog
 
-#TO DO: includere solo i blocchi in pysimCoder
+# Variabile globale per determinare l'ambiente
+isInWSL = False
+
+# Configuration file path
+config_file = 'config.json'
+
+def ask_installation_environment():
+    """Chiede all'utente dove ha installato PySimCoder e salva la scelta."""
+    def on_next():
+        global isInWSL
+        selected_option = environment_var.get()
+        if selected_option == "wsl":
+            isInWSL = True
+        elif selected_option == "linux":
+            isInWSL = False
+        else:
+            messagebox.showerror("Selection Error", "Please select an environment.")
+            return
+        root.destroy()
+
+    # Crea la finestra Tkinter
+    root = tk.Tk()
+    root.title("Select Installation Environment")
+
+    # Imposta la dimensione della finestra (larghezza x altezza)
+    root.geometry("700x150")  # Puoi modificare i valori "400x200" per ingrandire ulteriormente
+
+    # Disabilita il pulsante "X" per chiudere la finestra
+    root.protocol("WM_DELETE_WINDOW", lambda: None)
+
+    # Variabile per memorizzare l'opzione selezionata
+    environment_var = tk.StringVar()
+
+    # Creazione dei pulsanti di opzione
+    tk.Label(root, text="Where did you install PySimCoder?").pack(pady=10)
+    tk.Radiobutton(root, text="On Windows WSL", variable=environment_var, value="wsl").pack(anchor="w", padx=20)
+    tk.Radiobutton(root, text="On a Linux environment", variable=environment_var, value="linux").pack(anchor="w", padx=20)
+
+    # Pulsante per proseguire
+    tk.Button(root, text="Next", command=on_next).pack(pady=10)
+
+    root.mainloop()
+
+def load_config():
+    """Load paths from config.json if it exists"""
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as file:
+            return json.load(file)
+    return {}
+
+def save_config(first_headers_path, second_headers_path, first_source_path, second_source_path):
+    """Save paths to config.json"""
+    config = {
+        'first_headers_path': first_headers_path,
+        'second_headers_path': second_headers_path,
+        'first_source_path': first_source_path,
+        'second_source_path': second_source_path
+    }
+    with open(config_file, 'w') as file:
+        json.dump(config, file)
+    messagebox.showinfo("Configuration Saved", "Paths saved successfully!")
+
+def open_config_window():
+    """Open tkinter configuration window to set paths"""
+
+    global root  # Make root global for clipboard access
+    root = Tk()
+    root.title("Configuration")
+
+    # Load current config or set empty strings
+    current_config = load_config()
+    first_headers_path = StringVar(root, value=current_config.get('first_headers_path', ''))
+    second_headers_path = StringVar(root, value=current_config.get('second_headers_path', ''))
+    first_source_path = StringVar(root, value=current_config.get('first_source_path', ''))
+    second_source_path = StringVar(root, value=current_config.get('second_source_path', ''))
+
+    # Function to open file dialog and set path in the corresponding entry field
+    def select_directory(var):
+        if isInWSL:
+            # Display a message or handle WSL-specific behavior if needed
+            print("You are in WSL. Ensure X server is running for GUI operations.")
+        selected_path = filedialog.askdirectory()
+        if selected_path:
+            var.set(selected_path)
+
+    # Labels, entry fields, and buttons for selecting paths
+    Label(root, text="First Headers Path:").grid(row=0, column=0, sticky='e')
+    entry_first_headers = Entry(root, textvariable=first_headers_path, width=100)
+    entry_first_headers.grid(row=0, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(first_headers_path)).grid(row=0, column=2)
+
+    Label(root, text="Second Headers Path:").grid(row=1, column=0, sticky='e')
+    entry_second_headers = Entry(root, textvariable=second_headers_path, width=100)
+    entry_second_headers.grid(row=1, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(second_headers_path)).grid(row=1, column=2)
+
+    Label(root, text="First Source Path:").grid(row=2, column=0, sticky='e')
+    entry_first_source = Entry(root, textvariable=first_source_path, width=100)
+    entry_first_source.grid(row=2, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(first_source_path)).grid(row=2, column=2)
+
+    Label(root, text="Second Source Path:").grid(row=3, column=0, sticky='e')
+    entry_second_source = Entry(root, textvariable=second_source_path, width=100)
+    entry_second_source.grid(row=3, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(second_source_path)).grid(row=3, column=2)
+
+    # Save the inputs and close window
+    def save_and_close():
+        save_config(first_headers_path.get(), second_headers_path.get(),
+                    first_source_path.get(), second_source_path.get())
+        root.destroy()
+    
+    Button(root, text="Save", command=save_and_close).grid(row=4, column=1, pady=10, sticky='e')
+    root.mainloop()
+
+
 
 def create_cproject_file(model):
 
@@ -187,7 +308,7 @@ def create_ccsproject_file(model):
     
 
 
-def create_project_file(model):
+def create_project_file(model, first_path, second_path):
     """ Crea il file .project in formato XML """
     project_dir = f"./{model}_project"
     project_file = os.path.join(project_dir, ".project")
@@ -220,6 +341,59 @@ def create_project_file(model):
         '        <nature>org.eclipse.cdt.core.ccnature</nature>\n'
         '        <nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>\n'
         '    </natures>\n'
+        '    <linkedResources>\n'
+        '        <link>\n'
+        '            <name>F2837xD_Adc.c</name>\n'
+        '            <type>1</type>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_Adc.c</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_CodeStartBranch.asm</name>\n'
+        '            <type>1</type>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_CodeStartBranch.asm</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_DefaultISR.c</name>\n'
+        '            <type>1</type>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_DefaultISR.c</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_GlobalVariableDefs.c</name>\n'
+        '            <type>1</type>\n'
+        #'            <locationURI>file:/C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/source/F2837xD_GlobalVariableDefs.c</locationURI>\n'
+        f'            <locationURI>file:/{first_path}/F2837xD_GlobalVariableDefs.c</locationURI>\n'                
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_Gpio.c</name>\n'
+        '            <type>1</type>\n'
+        #'           <locationURI>file:/C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source/F2837xD_Gpio.c</locationURI>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_Gpio.c</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_Ipc.c</name>\n'
+        '            <type>1</type>\n'
+        #'           <locationURI>file:/C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source/F2837xD_Ipc.c</locationURI>\n'
+        f'           <locationURI>file:/{second_path}/F2837xD_Ipc.c</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_PieCtrl.c</name>\n'
+        '            <type>1</type>\n'
+        #'            <locationURI>file:/C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source/F2837xD_PieCtrl.c</locationURI>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_PieCtrl.c</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_SysCtrl.c</name>\n'
+        '            <type>1</type>\n'
+        #'            <locationURI>file:/C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source/F2837xD_SysCtrl.c</locationURI>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_SysCtrl.c</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
+        '            <name>F2837xD_usDelay.asm</name>\n'
+        '            <type>1</type>\n'
+        #'            <locationURI>file:/C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source/F2837xD_usDelay.asm</locationURI>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_usDelay.asm</locationURI>\n'
+        '        </link>\n'
+        '    </linkedResources>\n'
         '    <variableList>\n'
         '        <variable>\n'
         '            <name>INSTALLROOT_F2837XD</name>\n'
@@ -241,7 +415,57 @@ def create_project_file(model):
 
 
 
+
+def convert_path_for_wsl(path):
+    """Converte un percorso di Windows in un percorso compatibile con WSL."""
+    if path and os.name == 'posix' and 'microsoft' in os.uname().release.lower():
+        # Converte "C:\\Users\\utente\\percorso" in "/mnt/c/Users/utente/percorso"
+        path = path.replace('\\', '/')
+        if path[1] == ':':  # Verifica che il percorso sia di tipo C:\...
+            drive_letter = path[0].lower()
+            path = f"/mnt/{drive_letter}{path[2:]}"
+    return path
+
+
+def check_required_files_in_path(path, required_files):
+    """Controlla se tutti i file richiesti sono presenti nel percorso specificato."""
+    missing_files = [file for file in required_files if not os.path.isfile(os.path.join(path, file))]
+    return missing_files
+
+def convert_path_for_windows(path):
+    """Converte un percorso WSL in un percorso compatibile con Windows mantenendo gli slash ('/')."""
+    if path.startswith('/mnt/') and os.name == 'posix' and 'microsoft' in os.uname().release.lower():
+        # Esempio: "/mnt/c/Users/utente/percorso" diventa "C:/Users/utente/percorso"
+        parts = path.split('/')
+        drive_letter = parts[2].upper() + ':'  # Ottiene la lettera dell'unità e aggiunge ":"
+        windows_path = drive_letter + '/' + '/'.join(parts[3:])
+        return windows_path
+    return path  # Ritorna il percorso originale se non è un percorso WSL
+
+
+
 def create_project_structure(model):
+    ask_installation_environment()
+    print("Is in WSL:", isInWSL)
+
+    # Load the updated configuration paths
+    config = load_config()
+    first_headers_path = config.get('first_headers_path', '')
+    second_headers_path = config.get('second_headers_path', '')
+    first_source_path = config.get('first_source_path', '')
+    second_source_path = config.get('second_source_path', '')
+
+    # Open the configuration window to allow users to update paths as needed
+    open_config_window()
+
+    # Ricarica i percorsi aggiornati dopo la chiusura della finestra di configurazione
+    config = load_config()
+    first_headers_path = config.get('first_headers_path', '')
+    second_headers_path = config.get('second_headers_path', '')
+    first_source_path = config.get('first_source_path', '')
+    second_source_path = config.get('second_source_path', '')
+
+
 
     pysimCoder_path = environ.get('PYSUPSICTRL')
     include_path = pysimCoder_path + '/CodeGen/Delfino/include'
@@ -260,72 +484,196 @@ def create_project_structure(model):
     os.makedirs(include_dir, exist_ok=True)
     os.makedirs(targetConfigs_dir, exist_ok=True)
 
-    # Crea il file cpu_timers_cpu01.c
-    main_file = os.path.join(src_dir, "cpu_timers_cpu01.c")
+    # Crea il file adc_soc_epwm_cpu01.c
+
+    main_file = os.path.join(src_dir, "adc_soc_epwm_cpu01.c")
+
     with open(main_file, 'w') as f:
         f.write("//###########################################################################\n")
-        f.write("// FILE:   cpu_timers_cpu01.c\n")
+        f.write("// FILE:   adc_soc_epwm_cpu01.c\n")
         f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
-        f.write("//###########################################################################\n")
-        f.write("// Abilita solo il timer 0\n\n")
-        
+        f.write("//###########################################################################\n\n")
+    
+        # Included Files
         f.write("// Included Files\n")
         f.write('#include "F28x_Project.h"\n')
         f.write('#include "led.h"\n')
         f.write('#include "button.h"\n\n')
-
+    
+        # Function Prototypes
         f.write("// Function Prototypes\n")
-        f.write('__interrupt void cpu_timer0_isr(void);\n')
-        f.write('void setup(void);\n\n')
-
+        f.write("void ConfigureADC(void);\n")
+        f.write("void ConfigureEPWM(void);\n")
+        f.write("void SetupADCEpwm(Uint16 channel);\n")
+        f.write("void setup(void);\n")
+        f.write("void loop(void);\n")
+        f.write("interrupt void adca1_isr(void);\n\n")
+    
+        # Defines and Globals
+        f.write("// Defines\n")
+        f.write("#define RESULTS_BUFFER_SIZE 256\n\n")
+        f.write("// Globals\n")
+        f.write("Uint16 AdcaResults[RESULTS_BUFFER_SIZE];\n")
+        f.write("Uint16 resultsIndex;\n")
+        f.write("volatile Uint16 bufferFull;\n")
         f.write("double time;\n\n")
-
+    
+        # Main Function
         f.write("void main(void)\n")
         f.write("{\n")
         f.write("    setup();\n")
-        f.write("    while(1) {}\n")
-        f.write(f"    {model}_end();  // Condizione per finire\n")
+        f.write("    loop();\n")
         f.write("}\n\n")
-
-        f.write("__interrupt void cpu_timer0_isr(void)\n")
-        f.write("{\n")
-        f.write("    CpuTimer0.InterruptCount++;\n")
-        f.write(f"    {model}_isr(time);\n")
-        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
-        f.write("}\n\n")
-
+    
+        # Setup Function
         f.write("void setup(void)\n")
         f.write("{\n")
-        f.write("    InitSysCtrl();\n")
-        f.write("    InitGpio();\n")
-        f.write(f"    {model}_init();  // Inizializza i blocchi generati da PySimCoder\n\n")
-
-        f.write("    DINT;\n")
-        f.write("    InitPieCtrl();\n")
+        f.write("    InitSysCtrl();       // Initialize the CPU\n")
+        f.write("    InitGpio();          // Initialize the GPIO\n\n")
+        f.write(f"    {model}_init();      // Initialize blocks generated by PySimCoder\n\n")
+        f.write("    DINT;                // Disable interrupts\n\n")
+        f.write("    // Initialize the PIE control registers to their default state.\n")
+        f.write("    InitPieCtrl();\n\n")
+        f.write("    // Disable CPU interrupts and clear all CPU interrupt flags:\n")
         f.write("    IER = 0x0000;\n")
-        f.write("    IFR = 0x0000;\n")
+        f.write("    IFR = 0x0000;\n\n")
+        f.write("    // Initialize the PIE vector table with pointers to the shell Interrupt\n")
         f.write("    InitPieVectTable();\n\n")
-
+        f.write("    // Map ISR functions\n")
         f.write("    EALLOW;\n")
-        f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
+        f.write("    PieVectTable.ADCA1_INT = &adca1_isr;  // function for ADCA interrupt 1\n")
         f.write("    EDIS;\n\n")
-
-        f.write("    InitCpuTimers();\n")
-        f.write("    ConfigCpuTimer(&CpuTimer0, 200, 100000);\n")
-        f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
-
-        f.write("    IER |= M_INT1;\n")
-        f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
-
-        f.write("    EINT;\n")
-        f.write("    ERTM;\n")
+        f.write("    ConfigureADC();\n")
+        f.write("    ConfigureEPWM();\n\n")
+        f.write("    // Setup the ADC for ePWM triggered conversions on channel 0\n")
+        f.write("    SetupADCEpwm(0);\n\n")
+        f.write("    // Enable global Interrupts and higher priority real-time debug events:\n")
+        f.write("    IER |= M_INT1;     // Enable group 1 interrupts\n")
+        f.write("    EINT;              // Enable Global interrupt INTM\n")
+        f.write("    ERTM;              // Enable Global realtime interrupt DBGM\n\n")
+        f.write("    // Initialize results buffer\n")
+        f.write("    for(resultsIndex = 0; resultsIndex < RESULTS_BUFFER_SIZE; resultsIndex++)\n")
+        f.write("    {\n")
+        f.write("        AdcaResults[resultsIndex] = 0;\n")
+        f.write("    }\n")
+        f.write("    resultsIndex = 0;\n")
+        f.write("    bufferFull = 0;\n\n")
+        f.write("    // enable PIE interrupt\n")
+        f.write("    PieCtrlRegs.PIEIER1.bit.INTx1 = 1;\n\n")
+        f.write("    // sync ePWM\n")
+        f.write("    EALLOW;\n")
+        f.write("    CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;\n")
+        f.write("}\n\n")
+    
+        # Loop Function
+        f.write("void loop(void)\n")
+        f.write("{\n")
+        f.write("    //take conversions indefinitely in loop\n")
+        f.write("    do\n")
+        f.write("    {\n")
+        f.write("        //start ePWM\n")
+        f.write("        EPwm1Regs.ETSEL.bit.SOCAEN = 1;\n")
+        f.write("        EPwm1Regs.TBCTL.bit.CTRMODE = 0;\n\n")
+        f.write("        //wait while ePWM causes ADC conversions, which then cause interrupts,\n")
+        f.write("        while(!bufferFull);\n")
+        f.write("        bufferFull = 0; //clear the buffer full flag\n\n")
+        f.write("        //stop ePWM\n")
+        f.write("        EPwm1Regs.ETSEL.bit.SOCAEN = 0;  //disable SOCA\n")
+        f.write("        EPwm1Regs.TBCTL.bit.CTRMODE = 3; //freeze counter\n\n")
+        f.write("        //at this point, AdcaResults[] contains a sequence of conversions from the selected channel\n")
+        f.write("        //software breakpoint, hit run again to get updated conversions\n")
+        f.write("        asm(\"   ESTOP0\");\n")
+        f.write("    } while(1);\n")
+        f.write("}\n\n")
+    
+        # ConfigureADC Function
+        f.write("// ConfigureADC - Write ADC configurations and power up the ADC for both\n")
+        f.write("//                ADC A and ADC B\n")
+        f.write("void ConfigureADC(void)\n")
+        f.write("{\n")
+        f.write("    EALLOW;\n\n")
+        f.write("    //write configurations\n")
+        f.write("    AdcaRegs.ADCCTL2.bit.PRESCALE = 6; //set ADCCLK divider to /4\n")
+        f.write("    AdcSetMode(ADC_ADCA, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);\n\n")
+        f.write("    //Set pulse positions to late\n")
+        f.write("    AdcaRegs.ADCCTL1.bit.INTPULSEPOS = 1;\n\n")
+        f.write("    //power up the ADC\n")
+        f.write("    AdcaRegs.ADCCTL1.bit.ADCPWDNZ = 1;\n\n")
+        f.write("    //delay for 1ms to allow ADC time to power up\n")
+        f.write("    DELAY_US(1000);\n\n")
+        f.write("    EDIS;\n")
+        f.write("}\n\n")
+    
+        # ConfigureEPWM Function
+        f.write("// ConfigureEPWM - Configure EPWM SOC and compare values\n")
+        f.write("void ConfigureEPWM(void)\n")
+        f.write("{\n")
+        f.write("    EALLOW;\n")
+        f.write("    // Assumes ePWM clock is already enabled\n")
+        f.write("    EPwm1Regs.ETSEL.bit.SOCAEN = 0;    // Disable SOC on A group\n")
+        f.write("    EPwm1Regs.ETSEL.bit.SOCASEL = 4;   // Select SOC on up-count\n")
+        f.write("    EPwm1Regs.ETPS.bit.SOCAPRD = 1;    // Generate pulse on 1st event\n")
+        f.write("    EPwm1Regs.CMPA.bit.CMPA = 0x0800;  // Set compare A value to 2048 counts\n")
+        f.write("    EPwm1Regs.TBPRD = 0x1000;          // Set period to 4096 counts\n")
+        f.write("    EPwm1Regs.TBCTL.bit.CTRMODE = 3;   // freeze counter\n")
+        f.write("    EDIS;\n")
+        f.write("}\n\n")
+    
+        # SetupADCEpwm Function
+        f.write("// SetupADCEpwm - Setup ADC EPWM acquisition window\n")
+        f.write("void SetupADCEpwm(Uint16 channel)\n")
+        f.write("{\n")
+        f.write("    Uint16 acqps;\n\n")
+        f.write("    // Determine minimum acquisition window (in SYSCLKS) based on resolution\n")
+        f.write("    if(ADC_RESOLUTION_12BIT == AdcaRegs.ADCCTL2.bit.RESOLUTION)\n")
+        f.write("        acqps = 14; //75ns\n")
+        f.write("    else //resolution is 16-bit\n")
+        f.write("        acqps = 63; //320ns\n\n")
+        f.write("    //Select the channels to convert and end of conversion flag\n")
+        f.write("    EALLOW;\n")
+        f.write("    AdcaRegs.ADCSOC0CTL.bit.CHSEL = channel;  //SOC0 will convert pin A0\n")
+        f.write("    AdcaRegs.ADCSOC0CTL.bit.ACQPS = acqps;    //sample window is 100 SYSCLK cycles\n")
+        f.write("    AdcaRegs.ADCSOC0CTL.bit.TRIGSEL = 5;      //trigger on ePWM1 SOCA/C\n")
+        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = 0;    //end of SOC0 will set INT1 flag\n")
+        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;      //enable INT1 flag\n")
+        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;    //make sure INT1 flag is cleared\n")
+        f.write("    EDIS;\n")
+        f.write("}\n\n")
+    
+        # adca1_isr Function
+        f.write("// adca1_isr - Read ADC Buffer in ISR\n")
+        f.write("// Everytime ADC complete a conversion, the value is memorized in the AdcaResults buffer.\n")
+        f.write("interrupt void adca1_isr(void)\n")
+        f.write("{\n")
+        f.write("    AdcaResults[resultsIndex++] = AdcaResultRegs.ADCRESULT0;\n")
+        f.write("    if(RESULTS_BUFFER_SIZE <= resultsIndex)\n")
+        f.write("    {\n")
+        f.write("        resultsIndex = 0;\n")
+        f.write("        bufferFull = 1;\n")
+        f.write("    }\n\n")
+        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n\n")
+        f.write("    // Check if overflow has occurred\n")
+        f.write("    if(1 == AdcaRegs.ADCINTOVF.bit.ADCINT1)\n")
+        f.write("    {\n")
+        f.write("        AdcaRegs.ADCINTOVFCLR.bit.ADCINT1 = 1; //clear INT1 overflow flag\n")
+        f.write("        AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n")
+        f.write("    }\n\n")
+        f.write(f"    {model}_isr(time);\n\n")
+        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
         f.write("}\n")
+
+
 
     # Nome del file che deve essere spostato (ad esempio ciao.c)
     source_file = f'{model}.c'
+    destination_file = os.path.join(src_dir, f'{model}.c')
 
     # Verifica se esiste il file {model}.c nella cartella corrente
     if os.path.exists(source_file):
+    # Rimuovi il file di destinazione se esiste già, per consentire lo spostamento senza errori
+        if os.path.exists(destination_file):
+            os.remove(destination_file)
+
         # Sposta il file {model}.c nella cartella src
         shutil.move(source_file, src_dir)
 
@@ -363,7 +711,103 @@ def create_project_structure(model):
             if os.path.isfile(full_file_name):
                 shutil.copy(full_file_name, targetConfigs_dir)
 
+    print("First Headers Path:", first_headers_path)
+    print("Second Headers Path:", second_headers_path)
+    print("First Source Path:", first_source_path)
+    print("Second Source Path:", second_source_path)
+
+
+
+    if isInWSL:
+        if first_source_path.startswith("C:\\") or first_source_path.startswith("c:\\"):
+            first_source_path = convert_path_for_wsl(first_source_path)
+        if second_source_path.startswith("C:\\") or second_source_path.startswith("c:\\"):
+            second_source_path = convert_path_for_wsl(second_source_path)
+    
+        print("First Source Path wsl:", first_source_path)
+        print("Second Source Path wsl:", second_source_path)
+
+
+    while True:
+        # Verifica se uno dei percorsi contiene il file specifico
+        file_name = 'F2837xD_GlobalVariableDefs.c'
+        file_in_first = os.path.isfile(os.path.join(first_source_path, file_name))
+        file_in_second = os.path.isfile(os.path.join(second_source_path, file_name))
+
+        if file_in_first:
+            print(f"{file_name} trovato in {first_source_path}")
+            GlobalVariableDefs_path = first_source_path
+            other_path = second_source_path  # L'altro percorso per la verifica dei file
+            break  # Esce dal ciclo se il file è trovato
+        elif file_in_second:
+            print(f"{file_name} trovato in {second_source_path}")
+            GlobalVariableDefs_path = second_source_path
+            other_path = first_source_path  # L'altro percorso per la verifica dei file
+            break  # Esce dal ciclo se il file è trovato
+        else:
+            # Apri una finestra di avviso se il file non è presente in nessuno dei percorsi
+            response = messagebox.askyesno("File not found", f"{file_name} not found in the given source paths. Do you want to change the paths?")
+            if response:
+                # Riapre la finestra di configurazione per modificare i percorsi
+                open_config_window()
+
+                # Ricarica i percorsi aggiornati
+                config = load_config()
+                first_source_path = config.get('first_source_path', '')
+                second_source_path = config.get('second_source_path', '')
+            else:
+                # Mostra una finestra di avviso e cancella i file nella cartella {model}_project
+                messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
+                if os.path.exists(project_dir):
+                    shutil.rmtree(project_dir)  # Cancella la cartella {model}_project e tutto il suo contenuto
+                return  # Esce dal ciclo se preme no
+    
+    while True:
+        # Controlla se l'altro percorso contiene i file richiesti
+        required_files = [
+            'F2837xD_Adc.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
+            'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c',
+            'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
+        ]
+        missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
+
+        if missing_files:
+            missing_files_str = "\n".join(missing_files)
+            response = messagebox.askyesno(
+                "Missing Files",
+                f"The following files are missing in the path '{other_path}':\n{missing_files_str}\nDo you want to change the paths?"
+            )
+            if response:
+                open_config_window()
+                # Ricarica i percorsi aggiornati
+                config = load_config()
+                first_source_path = config.get('first_source_path', '')
+                second_source_path = config.get('second_source_path', '')
+
+                # Verifica nuovamente la presenza dei file richiesti nell'altro percorso aggiornato
+                missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
+                if not missing_files:
+                    # Tutti i file sono stati trovati, esci dal ciclo
+                    break
+            else:
+                # Mostra una finestra di avviso e cancella i file nella cartella {model}_project
+                messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
+                if os.path.exists(project_dir):
+                    shutil.rmtree(project_dir)  # Cancella la cartella {model}_project e tutto il suo contenuto
+                return  # Esce dalla funzione se l'utente preme "No"
+        else:
+            # Tutti i file sono presenti, esci dal ciclo
+            break
+
+    GlobalVariableDefs_path = convert_path_for_windows(GlobalVariableDefs_path)
+    other_path = convert_path_for_windows(other_path)
+    print(GlobalVariableDefs_path)
+    print(other_path)
     # Crea funzioni per creare i file .project, .cproject, .ccsproject
     create_ccsproject_file(model)
-    create_project_file(model)
+    create_project_file(model, GlobalVariableDefs_path, other_path)
     create_cproject_file(model)
+
+    # Mostra un messaggio che indica che il progetto è stato creato con successo
+    messagebox.showinfo("Project Status", "Project successfully created")
+

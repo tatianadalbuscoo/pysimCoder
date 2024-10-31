@@ -32,7 +32,7 @@ static void inout(python_block* block)
     double* u = block->u[0];     // u[0] first input of the block
 
     // Check input and set the Led state
-    if (u[0] > 0.5) {
+    if (u[0] > 0.5) 
         LED_On(pin);    // Turn on Led
     else {
         LED_Off(pin);   // Turn off Led
