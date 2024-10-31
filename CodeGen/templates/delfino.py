@@ -60,11 +60,12 @@ def load_config():
             return json.load(file)
     return {}
 
-def save_config(first_headers_path, second_headers_path, first_source_path, second_source_path):
+def save_config(first_headers_path, second_headers_path, third_headers_path, first_source_path, second_source_path):
     """Save paths to config.json"""
     config = {
         'first_headers_path': first_headers_path,
         'second_headers_path': second_headers_path,
+        'third_headers_path': third_headers_path,
         'first_source_path': first_source_path,
         'second_source_path': second_source_path
     }
@@ -83,6 +84,7 @@ def open_config_window():
     current_config = load_config()
     first_headers_path = StringVar(root, value=current_config.get('first_headers_path', ''))
     second_headers_path = StringVar(root, value=current_config.get('second_headers_path', ''))
+    third_headers_path = StringVar(root, value=current_config.get('third_headers_path', ''))
     first_source_path = StringVar(root, value=current_config.get('first_source_path', ''))
     second_source_path = StringVar(root, value=current_config.get('second_source_path', ''))
 
@@ -106,28 +108,35 @@ def open_config_window():
     entry_second_headers.grid(row=1, column=1, pady=5)
     Button(root, text="Browse", command=lambda: select_directory(second_headers_path)).grid(row=1, column=2)
 
-    Label(root, text="First Source Path:").grid(row=2, column=0, sticky='e')
-    entry_first_source = Entry(root, textvariable=first_source_path, width=100)
-    entry_first_source.grid(row=2, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(first_source_path)).grid(row=2, column=2)
+    # New third headers path
+    Label(root, text="Third Headers Path:").grid(row=2, column=0, sticky='e')
+    entry_third_headers = Entry(root, textvariable=third_headers_path, width=100)
+    entry_third_headers.grid(row=2, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(third_headers_path)).grid(row=2, column=2)
 
-    Label(root, text="Second Source Path:").grid(row=3, column=0, sticky='e')
+    Label(root, text="First Source Path:").grid(row=3, column=0, sticky='e')
+    entry_first_source = Entry(root, textvariable=first_source_path, width=100)
+    entry_first_source.grid(row=3, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(first_source_path)).grid(row=3, column=2)
+
+    Label(root, text="Second Source Path:").grid(row=4, column=0, sticky='e')
     entry_second_source = Entry(root, textvariable=second_source_path, width=100)
-    entry_second_source.grid(row=3, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(second_source_path)).grid(row=3, column=2)
+    entry_second_source.grid(row=4, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(second_source_path)).grid(row=4, column=2)
+
 
     # Save the inputs and close window
     def save_and_close():
         save_config(first_headers_path.get(), second_headers_path.get(),
-                    first_source_path.get(), second_source_path.get())
+                    third_headers_path.get(), first_source_path.get(), second_source_path.get())
         root.destroy()
     
-    Button(root, text="Save", command=save_and_close).grid(row=4, column=1, pady=10, sticky='e')
+    Button(root, text="Save", command=save_and_close).grid(row=5, column=1, pady=10, sticky='e')
     root.mainloop()
 
 
 
-def create_cproject_file(model):
+def create_cproject_file(model, first_path, second_path, third_path):
 
     project_dir = f"./{model}_project"
     cproject_file = os.path.join(project_dir, ".cproject")
@@ -196,7 +205,9 @@ def create_cproject_file(model):
 
                                     <!-- Sezione Include Path -->
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.INCLUDE_PATH.1816198112" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.INCLUDE_PATH" valueType="includePath">
-                                        <listOptionValue builtIn="false" value="${{CG_TOOL_ROOT}}/include"/>
+                                        <listOptionValue builtIn="false" value="{first_path}"/>
+                                        <listOptionValue builtIn="false" value="{second_path}"/>
+                                        <listOptionValue builtIn="false" value="{third_path}"/>
                                         <listOptionValue builtIn="false" value="{include_path}"/>
                                     </option>
 
@@ -228,8 +239,6 @@ def create_cproject_file(model):
                                     </option>
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.SEARCH_PATH.1443810135" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.SEARCH_PATH" valueType="libPaths">
                                         <listOptionValue builtIn="false" value="${{CG_TOOL_ROOT}}/lib"/>
-                                        <listOptionValue builtIn="false" value="${{CG_TOOL_ROOT}}/include"/>
-                                        <listOptionValue builtIn="false" value="{include_path}"/>
                                     </option>
                                     <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.DISPLAY_ERROR_NUMBER.96471687" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
                                     <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.XML_LINK_INFO.1957298402" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.XML_LINK_INFO" value="&quot;${{ProjName}}_linkInfo.xml&quot;" valueType="string"/>
@@ -382,6 +391,11 @@ def create_project_file(model, first_path, second_path):
         f'            <locationURI>file:/{second_path}/F2837xD_PieCtrl.c</locationURI>\n'
         '        </link>\n'
         '        <link>\n'
+        '            <name>F2837xD_PieVect.c</name>\n'
+        '            <type>1</type>\n'
+        f'            <locationURI>file:/{second_path}/F2837xD_PieVect.c</locationURI>\n'
+        '        </link>\n'
+        '        <link>\n'
         '            <name>F2837xD_SysCtrl.c</name>\n'
         '            <type>1</type>\n'
         #'            <locationURI>file:/C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source/F2837xD_SysCtrl.c</locationURI>\n'
@@ -452,6 +466,7 @@ def create_project_structure(model):
     config = load_config()
     first_headers_path = config.get('first_headers_path', '')
     second_headers_path = config.get('second_headers_path', '')
+    third_headers_path = config.get('third_headers_path', '')
     first_source_path = config.get('first_source_path', '')
     second_source_path = config.get('second_source_path', '')
 
@@ -462,6 +477,7 @@ def create_project_structure(model):
     config = load_config()
     first_headers_path = config.get('first_headers_path', '')
     second_headers_path = config.get('second_headers_path', '')
+    third_headers_path = config.get('third_headers_path', '')
     first_source_path = config.get('first_source_path', '')
     second_source_path = config.get('second_source_path', '')
 
@@ -713,6 +729,7 @@ def create_project_structure(model):
 
     print("First Headers Path:", first_headers_path)
     print("Second Headers Path:", second_headers_path)
+    print("Third Headers Path", third_headers_path)
     print("First Source Path:", first_source_path)
     print("Second Source Path:", second_source_path)
 
@@ -766,7 +783,7 @@ def create_project_structure(model):
         # Controlla se l'altro percorso contiene i file richiesti
         required_files = [
             'F2837xD_Adc.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
-            'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c',
+            'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
             'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
         ]
         missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
@@ -803,10 +820,28 @@ def create_project_structure(model):
     other_path = convert_path_for_windows(other_path)
     print(GlobalVariableDefs_path)
     print(other_path)
+
+    if isInWSL:
+        # percorso di wsl
+        if first_headers_path.startswith("/mnt/c/"):
+            #lo convertiamo in un percorso Windows
+            first_headers_path = convert_path_for_windows(first_headers_path)
+        else: 
+            first_headers_path = first_headers_path.replace('\\', '/')
+        if second_headers_path.startswith("/mnt/c/"):
+            second_headers_path = convert_path_for_windows(second_headers_path)
+        else:
+            second_headers_path = second_headers_path.replace('\\', '/')
+        if third_headers_path.startswith("/mnt/c/"):
+            third_headers_path = convert_path_for_windows(third_headers_path)
+        else:
+            third_headers_path = third_headers_path.replace('\\', '/')
+
+
     # Crea funzioni per creare i file .project, .cproject, .ccsproject
     create_ccsproject_file(model)
     create_project_file(model, GlobalVariableDefs_path, other_path)
-    create_cproject_file(model)
+    create_cproject_file(model, first_headers_path, second_headers_path, third_headers_path)
 
     # Mostra un messaggio che indica che il progetto è stato creato con successo
     messagebox.showinfo("Project Status", "Project successfully created")
