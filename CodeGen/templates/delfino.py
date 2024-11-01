@@ -693,20 +693,61 @@ def create_project_structure(model):
         # Sposta il file {model}.c nella cartella src
         shutil.move(source_file, src_dir)
 
+        # Verifica se il file {model}.c contiene il nome 'inputGPIOblk.c'
+        with open(destination_file, 'r') as file:
+            content = file.read()
+            if 'inputGPIOblk' in content:
+                # Copia il file button.c dalla cartella src alla cartella di destinazione
+                button_file = os.path.join(src_path, 'button.c')
+                if os.path.exists(button_file):
+                    shutil.copy(button_file, src_dir)
+                    print("button.c copiato con successo.")
+
+                # Copia il file button.h dalla cartella headers alla cartella headers di destinazione
+                button_header_file = os.path.join(include_path, 'button.h')  
+                if os.path.exists(button_header_file):
+                    shutil.copy(button_header_file, include_dir)  
+                    print("button.h copiato con successo.")
+                    
+                inputGPIOblk_file = os.path.join(devices_path, 'inputGPIOblk.c')
+                if os.path.exists(inputGPIOblk_file):
+                    shutil.copy(inputGPIOblk_file, src_dir)
+            else:
+                print("inputGPIOblk non presente in {model}.c.")
+
+            if 'outputGPIOblk' in content:
+                # Copia il file button.c dalla cartella src alla cartella di destinazione
+                led_file = os.path.join(src_path, 'led.c')
+                if os.path.exists(led_file):
+                    shutil.copy(led_file, src_dir)
+
+                    # Copia il file button.h dalla cartella headers alla cartella headers di destinazione
+                led_header_file = os.path.join(include_path, 'led.h')  
+                if os.path.exists(led_header_file):
+                    shutil.copy(led_header_file, include_dir)  
+                    
+                outputGPIOblk_file = os.path.join(devices_path, 'outputGPIOblk.c')
+                if os.path.exists(outputGPIOblk_file):
+                    shutil.copy(outputGPIOblk_file, src_dir)
+
+            else:
+                print("outputGPIOblk non presente in {model}.c.")
+
     # Copia i file dalla directory include nel percorso include_path alla directory include del progetto
-    if os.path.exists(include_path):
-        for file_name in os.listdir(include_path):
-            full_file_name = os.path.join(include_path, file_name)
-            if os.path.isfile(full_file_name):
-                shutil.copy(full_file_name, include_dir)
+    #if os.path.exists(include_path):
+        #for file_name in os.listdir(include_path):
+            #full_file_name = os.path.join(include_path, file_name)
+            #if os.path.isfile(full_file_name):
+                #shutil.copy(full_file_name, include_dir)
+
 
 
      # Copia i file dalla directory src nel percorso src_path alla directory src del progetto
-    if os.path.exists(src_path):
-        for file_name in os.listdir(src_path):
-            full_file_name = os.path.join(src_path, file_name)
-            if os.path.isfile(full_file_name):
-                shutil.copy(full_file_name, src_dir)
+    #if os.path.exists(src_path):
+        #for file_name in os.listdir(src_path):
+            #full_file_name = os.path.join(src_path, file_name)
+            #if os.path.isfile(full_file_name):
+                #shutil.copy(full_file_name, src_dir)
 
     # Copia il file pyblock.h nella directory include del progetto
     pyblock_file = os.path.join(pyblock_path, 'pyblock.h')
@@ -714,11 +755,11 @@ def create_project_structure(model):
         shutil.copy(pyblock_file, include_dir)
 
     # Copia i file nella directory devices
-    if os.path.exists(devices_path):
-        for file_name in os.listdir(devices_path):
-            full_file_name = os.path.join(devices_path, file_name)
-            if os.path.isfile(full_file_name):
-                shutil.copy(full_file_name, src_dir)
+    #if os.path.exists(devices_path):
+        #for file_name in os.listdir(devices_path):
+            #full_file_name = os.path.join(devices_path, file_name)
+            #if os.path.isfile(full_file_name):
+                #shutil.copy(full_file_name, src_dir)
         
     # copia contenuto directory targetConfigs
     if os.path.exists(targetConfigs_path):
