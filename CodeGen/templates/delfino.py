@@ -327,6 +327,7 @@ def convert_path_for_wsl(path):
         if path[1] == ':':
             drive_letter = path[0].lower()
             path = f"/mnt/{drive_letter}{path[2:]}"
+
     return path
 
 
@@ -1152,6 +1153,10 @@ def create_project_structure(model):
                 config = load_config()
                 first_source_path = config.get('first_source_path', '')
                 second_source_path = config.get('second_source_path', '')
+
+                if isInWSL:
+                    first_source_path = convert_path_for_wsl(first_source_path)
+                    second_source_path = convert_path_for_wsl(second_source_path)
             else:
 
                 # Show a warning dialog and delete files in the {model}_project folder.
@@ -1179,8 +1184,18 @@ def create_project_structure(model):
             if response:
                 open_config_window()
                 config = load_config()
+              
                 first_source_path = config.get('first_source_path', '')
                 second_source_path = config.get('second_source_path', '')
+
+                if isInWSL:
+                    first_source_path = convert_path_for_wsl(first_source_path)
+                    second_source_path = convert_path_for_wsl(second_source_path)
+
+                if GlobalVariableDefs_path == first_source_path:
+                    other_path = second_source_path
+                else:
+                    other_path = first_source_path
 
                 # Check again for the presence of the required files in the other updated path
                 missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
