@@ -926,8 +926,6 @@ def create_project_structure(model):
         # Included Files
         f.write("// Included Files\n")
         f.write('#include "F28x_Project.h"\n')
-        f.write('#include "led.h"\n')
-        f.write('#include "button.h"\n\n')
     
         # Function Prototypes
         f.write("// Function Prototypes\n")
