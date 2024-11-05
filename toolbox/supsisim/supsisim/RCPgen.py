@@ -85,24 +85,18 @@ def genProjectStructure(model, template):
     # Removes the extension from the template file (.tmf)
     base_name = os.path.splitext(template)[0]
     
-    # Creates the full path to the Python script (adds .py extension)
     script_path = os.path.join(template_path, 'CodeGen', 'templates', base_name + '.py')
-    
     if os.path.exists(script_path):
 
         # Loads the module from the given path
         module = load_module(script_path)
 
         if module:
-            try:
+
+            # Check if the method 'create_project_structure' exists
+            if hasattr(module, 'create_project_structure'):
                 module.create_project_structure(model)
 
-            # If the loaded module does not contain the method create_project_structure
-            except AttributeError:
-                print(f"Error: The module {base_name}.py does not have a create_project_structure method.")
-            # Catch any other exceptions
-            except Exception as e:
-                print(f"An error occurred while executing the create_project_structure method: {e}")
         else:
             print("Failed to load the module.")
     else:
