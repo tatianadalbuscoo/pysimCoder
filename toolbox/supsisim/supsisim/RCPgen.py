@@ -28,57 +28,85 @@ import os
 
 def load_module(module_path):
 
-    """ Reads file source and loads it as a module
-
-    Call: delfino = load_module(script_path)
-
+    """ 
+    Reads a file source and loads it as a module.
+    
+    Example Call:
+    -------------
+    module = load_module('/path/to/script.py')
+    
     Parameters
     ----------
-    source: file to load
-    module_name: name of module to register in sys.modules
-
+    module_path: Path to the file to load.
+    
     Returns
     -------
-    loaded module
-
+    module or None
+        The loaded module, or None if an error occurs during loading.
     """
-    spec = importlib.util.spec_from_file_location("delfino", module_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+
+    try:
+        # Extracts the module name from the path (removes the .py extension)
+        module_name = os.path.basename(module_path).replace('.py', '')
+        
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+        
+        # Executes the module
+        spec.loader.exec_module(module)
+        return module
+
+    except Exception as e:
+        print(f"Error loading module {module_path}: {e}")
+        return None
 
 def genProjectStructure(model, template):
 
-    """ Reads file source and loads it as a module
+    """ 
+    Reads a file source, loads it as a module, and calls a method to generate a project structure.
     
-    Call: genProjectStructure(model, template)
-
+    Example Call:
+    -------------
+    genProjectStructure('model_name', 'template_name.tmf')
+    
     Parameters
     ----------
-    model: Model name
-    template: The template file (e.g., 'delfino.tmf') from which the corresponding Python script 
-    (e.g., 'delfino.py') is derived.
-
+    model: The name of the model.
+    template: The template file (e.g., 'delfino.tmf') from which the corresponding Python script (e.g., 'delfino.py') is derived.
+    
     Returns
     -------
     -
 
     """
-    # Get path to template directory
+
     template_path = environ.get('PYSUPSICTRL')
     
-    # Remove extension to template (.tmf)
+    # Removes the extension from the template file (.tmf)
     base_name = os.path.splitext(template)[0]
     
-    # Create complete path (add .py)
+    # Creates the full path to the Python script (adds .py extension)
     script_path = os.path.join(template_path, 'CodeGen', 'templates', base_name + '.py')
- 
+    
     if os.path.exists(script_path):
+
+        # Loads the module from the given path
         module = load_module(script_path)
 
-        # Check if the name of script is delfino.py
-        if os.path.basename(script_path) == "delfino.py":
-            module.create_project_structure(model)
+        if module:
+            try:
+                module.create_project_structure(model)
+
+            # If the loaded module does not contain the method create_project_structure
+            except AttributeError:
+                print(f"Error: The module {base_name}.py does not have a create_project_structure method.")
+            # Catch any other exceptions
+            except Exception as e:
+                print(f"An error occurred while executing the create_project_structure method: {e}")
+        else:
+            print("Failed to load the module.")
+    else:
+        print(f"Script path {script_path} does not exist.")
  
 
 
