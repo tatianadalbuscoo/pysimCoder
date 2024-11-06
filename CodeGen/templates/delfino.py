@@ -33,69 +33,12 @@ config_file = 'config.json'
 # Main window in Tkinter
 root = None
 
-def ask_installation_environment():
-    
-    """Asks the user where PySimCoder is installed and saves the choice.
+def check_wsl_environment():
+    """Detects if running on WSL or native Linux and sets isInWSL accordingly."""
+    global isInWSL
+    # Check for 'Microsoft' in the release name, common for WSL.
+    isInWSL = 'microsoft' in os.uname().release.lower()
 
-    This function creates a Tkinter GUI window to prompt the user to select 
-    the environment where PySimCoder is installed (either Windows WSL or Linux).
-    The user's choice is stored in a global variable `isInWSL`.
-
-    Call:
-    -----
-    ask_installation_environment()
-
-    Functionality:
-    --------------
-    - Opens a GUI window with radio buttons for environment selection.
-    - Prevents window closure using the "X" button.
-    - Stores the user's selection in a global variable `isInWSL`.
-    - Closes the window after a valid selection is made, or shows an error if no selection is provided.
-
-    Raises:
-    -------
-    - Displays an error message if the user does not make a selection.
-
-    """
-
-    def on_next():
-        
-        global isInWSL
-
-        # Save the user's choice: wsl or linux
-        selected_option = environment_var.get()
-        if selected_option == "wsl":
-            isInWSL = True
-        elif selected_option == "linux":
-            isInWSL = False
-        else:
-            messagebox.showerror("Selection Error", "Please select an environment.")
-            return
-
-        # Close the application
-        root.destroy()
-
-    global root
-
-    # Create window la Tkinter
-    root = tk.Tk()
-    root.title("Select Installation Environment")
-    root.geometry("700x150")
-
-
-    # Disable the "X" button to close the window
-    root.protocol("WM_DELETE_WINDOW", lambda: None)
-
-    # Variable to store the selected option
-    environment_var = tk.StringVar()
-
-    tk.Label(root, text="Where did you install PySimCoder?").pack(pady=10)
-    tk.Radiobutton(root, text="On Windows WSL", variable=environment_var, value="wsl").pack(anchor="w", padx=20)
-    tk.Radiobutton(root, text="On a Linux environment", variable=environment_var, value="linux").pack(anchor="w", padx=20)
-    tk.Button(root, text="Next", command=on_next).pack(pady=10)
-
-    # Keeps the application running
-    root.mainloop()
 
 
 def load_config():
@@ -862,7 +805,7 @@ def create_project_structure(model):
 
     """
 
-    ask_installation_environment()
+    check_wsl_environment()
     open_config_window()
 
     # It makes sure that the data being worked on has been freshly modified by the user.
