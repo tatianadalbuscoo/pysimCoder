@@ -136,7 +136,7 @@ def load_config():
     return {}
 
 
-def save_config(first_headers_path, second_headers_path, third_headers_path, first_source_path, second_source_path, c2000ware_path):
+def save_config(ti_path, c2000ware_path):
 
     """Saves the provided paths to a config.json file.
 
@@ -147,7 +147,7 @@ def save_config(first_headers_path, second_headers_path, third_headers_path, fir
 
     Call:
     -----
-    save_config(first_headers_path, second_headers_path, third_headers_path, first_source_path, second_source_path, c2000ware_path)
+    save_config(second_headers_path, third_headers_path, first_source_path, second_source_path, c2000ware_path)
 
     Parameters:
     -----------
@@ -172,11 +172,7 @@ def save_config(first_headers_path, second_headers_path, third_headers_path, fir
 
     # Dictionary to save in .json file
     config = {
-        'first_headers_path': first_headers_path,
-        'second_headers_path': second_headers_path,
-        'third_headers_path': third_headers_path,
-        'first_source_path': first_source_path,
-        'second_source_path': second_source_path,
+        'ti_path': ti_path,
         'c2000ware_path': c2000ware_path
     }
 
@@ -222,11 +218,7 @@ def open_config_window():
 
     # Load current config or set empty strings
     current_config = load_config()
-    first_headers_path = StringVar(root, value=current_config.get('first_headers_path', ''))
-    second_headers_path = StringVar(root, value=current_config.get('second_headers_path', ''))
-    third_headers_path = StringVar(root, value=current_config.get('third_headers_path', ''))
-    first_source_path = StringVar(root, value=current_config.get('first_source_path', ''))
-    second_source_path = StringVar(root, value=current_config.get('second_source_path', ''))
+    ti_path = StringVar(root, value=current_config.get('ti_path', ''))
     c2000ware_path = StringVar(root, value=current_config.get('c2000ware_path', ''))
 
     # Function to open file dialog and set path in the corresponding entry field
@@ -238,47 +230,25 @@ def open_config_window():
         if selected_path:
             var.set(selected_path)
 
-    # Labels, entry fields, and buttons for selecting paths
-    Label(root, text="First Headers Path:").grid(row=0, column=0, sticky='e')
-    entry_first_headers = Entry(root, textvariable=first_headers_path, width=100)
-    entry_first_headers.grid(row=0, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(first_headers_path)).grid(row=0, column=2)
+    Label(root, text="ti folder path:").grid(row=0, column=0, sticky='e')
+    entry_ti = Entry(root, textvariable=ti_path, width=100)
+    entry_ti.grid(row=0, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(ti_path)).grid(row=0, column=2)
 
-    Label(root, text="Second Headers Path:").grid(row=1, column=0, sticky='e')
-    entry_second_headers = Entry(root, textvariable=second_headers_path, width=100)
-    entry_second_headers.grid(row=1, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(second_headers_path)).grid(row=1, column=2)
-
-    Label(root, text="Third Headers Path:").grid(row=2, column=0, sticky='e')
-    entry_third_headers = Entry(root, textvariable=third_headers_path, width=100)
-    entry_third_headers.grid(row=2, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(third_headers_path)).grid(row=2, column=2)
-
-    Label(root, text="First Source Path:").grid(row=3, column=0, sticky='e')
-    entry_first_source = Entry(root, textvariable=first_source_path, width=100)
-    entry_first_source.grid(row=3, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(first_source_path)).grid(row=3, column=2)
-
-    Label(root, text="Second Source Path:").grid(row=4, column=0, sticky='e')
-    entry_second_source = Entry(root, textvariable=second_source_path, width=100)
-    entry_second_source.grid(row=4, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(second_source_path)).grid(row=4, column=2)
-
-    Label(root, text="C2000Ware_4_01_00_00 path installation:").grid(row=5, column=0, sticky='e')
+    Label(root, text="C2000Ware_4_01_00_00 folder path:").grid(row=1, column=0, sticky='e')
     entry_c2000ware = Entry(root, textvariable=c2000ware_path, width=100)
-    entry_c2000ware.grid(row=5, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(c2000ware_path)).grid(row=5, column=2)
+    entry_c2000ware.grid(row=1, column=1, pady=5)
+    Button(root, text="Browse", command=lambda: select_directory(c2000ware_path)).grid(row=1, column=2)
 
     # Save the inputs and close window
     def save_and_close():
-        save_config(first_headers_path.get(), second_headers_path.get(),
-                    third_headers_path.get(), first_source_path.get(), second_source_path.get(), c2000ware_path.get())
+        save_config(ti_path.get(), c2000ware_path.get())
 
         # Destroys all widgets and terminates the main loop (closes the graphical interface)
         root.destroy()
 
     # save_and_close() will be called when the user clicks "Save" button.
-    Button(root, text="Save", command=save_and_close).grid(row=6, column=1, pady=10, sticky='e')
+    Button(root, text="Save", command=save_and_close).grid(row=2, column=1, pady=10, sticky='e')
 
     # Start the main loop of the Tkinter application
     root.mainloop()
@@ -475,7 +445,7 @@ def create_ccsproject_file(model):
         file.write(ccsproject_content)
 
 
-def create_project_file(model, first_path, second_path):
+def create_project_file(model, c2000ware_path):
 
     """Creates a .project file in XML format for a given project.
 
@@ -507,6 +477,9 @@ def create_project_file(model, first_path, second_path):
         Creates a file `./exampleModel_project/.project` with the specified XML content.
 
     """
+    first_path = c2000ware_path + '/device_support/f2837xd/headers/source'
+    second_path = c2000ware_path + '/device_support/f2837xd/common/source'
+
     if isInWSL:
          first_path = '/' + first_path
          second_path = '/' + second_path
@@ -611,7 +584,7 @@ def create_project_file(model, first_path, second_path):
         file.write(project_content)
 
 
-def create_cproject_file(model, first_path, second_path, third_path, c2000_path, include):
+def create_cproject_file(model, ti_path, c2000_path, include):
 
     """Creates a .cproject file in XML format for a given project.
 
@@ -653,6 +626,10 @@ def create_cproject_file(model, first_path, second_path, third_path, c2000_path,
     include_path = include
     linker_path1 = c2000_path + '/device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'
     linker_path2 = c2000_path + '/device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'
+
+    first_headers_path = c2000_path + '/device_support/f2837xd/headers/include'
+    second_headers_path = c2000_path + '/device_support/f2837xd/common/include'
+    third_headers_path = ti_path + '/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'
     
     if isInWSL:
         include_path = convert_path_for_windows(include_path)
@@ -705,9 +682,9 @@ def create_cproject_file(model, first_path, second_path, third_path, c2000_path,
 
                                     <!-- Sezione Include Path -->
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.INCLUDE_PATH.1816198112" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.INCLUDE_PATH" valueType="includePath">
-                                        <listOptionValue builtIn="false" value="{first_path}"/>
-                                        <listOptionValue builtIn="false" value="{second_path}"/>
-                                        <listOptionValue builtIn="false" value="{third_path}"/>
+                                        <listOptionValue builtIn="false" value="{first_headers_path}"/>
+                                        <listOptionValue builtIn="false" value="{second_headers_path}"/>
+                                        <listOptionValue builtIn="false" value="{third_headers_path}"/>
                                         <listOptionValue builtIn="false" value="{include_path}"/>
                                     </option>
 
@@ -890,11 +867,7 @@ def create_project_structure(model):
 
     # It makes sure that the data being worked on has been freshly modified by the user.
     config = load_config()
-    first_headers_path = config.get('first_headers_path', '')
-    second_headers_path = config.get('second_headers_path', '')
-    third_headers_path = config.get('third_headers_path', '')
-    first_source_path = config.get('first_source_path', '')
-    second_source_path = config.get('second_source_path', '')
+    ti_path = config.get('ti_path', '')
     c2000ware_path = config.get('c2000ware_path', '')
 
     pysimCoder_path = environ.get('PYSUPSICTRL')
@@ -1003,122 +976,113 @@ def create_project_structure(model):
             if os.path.isfile(full_file_name):
                 shutil.copy(full_file_name, targetConfigs_dir)
 
-    if isInWSL:
+    #if isInWSL:
         
         # Path windows insert, eg: C:\ti\c2000\C2000Ware_4_01_00_00\device_support\f2837xd\headers\include
         # convert in wsl path because must search for src files.
-        if first_source_path.startswith("C:\\") or first_source_path.startswith("c:\\"):
-            first_source_path = convert_path_for_wsl(first_source_path)
-        if second_source_path.startswith("C:\\") or second_source_path.startswith("c:\\"):
-            second_source_path = convert_path_for_wsl(second_source_path)
+        #if first_source_path.startswith("C:\\") or first_source_path.startswith("c:\\"):
+            #first_source_path = convert_path_for_wsl(first_source_path)
+        #if second_source_path.startswith("C:\\") or second_source_path.startswith("c:\\"):
+            #second_source_path = convert_path_for_wsl(second_source_path)
 
-    while True:
+    #while True:
 
         # Check if one of the paths contains the specific file
-        file_name = 'F2837xD_GlobalVariableDefs.c'
-        file_in_first = os.path.isfile(os.path.join(first_source_path, file_name))
-        file_in_second = os.path.isfile(os.path.join(second_source_path, file_name))
+        #file_name = 'F2837xD_GlobalVariableDefs.c'
+        #file_in_first = os.path.isfile(os.path.join(first_source_path, file_name))
+        #file_in_second = os.path.isfile(os.path.join(second_source_path, file_name))
 
-        if file_in_first:
-            GlobalVariableDefs_path = first_source_path
-            other_path = second_source_path
-            break  
-        elif file_in_second:
-            GlobalVariableDefs_path = second_source_path
-            other_path = first_source_path
-            break
-        else:
+        #if file_in_first:
+            #GlobalVariableDefs_path = first_source_path
+            #other_path = second_source_path
+            #break  
+        #elif file_in_second:
+            #GlobalVariableDefs_path = second_source_path
+            #other_path = first_source_path
+            #break
+        #else:
             # Warning dialog if file is not present in any of the paths.
-            response = messagebox.askyesno("File not found", f"{file_name} not found in the given source paths. Do you want to change the paths?")
-            if response:
+            #response = messagebox.askyesno("File not found", f"{file_name} not found in the given source paths. Do you want to change the paths?")
+            #if response:
 
                 # Reopens the configuration window to edit the paths.
-                open_config_window()
-                config = load_config()
-                first_source_path = config.get('first_source_path', '')
-                second_source_path = config.get('second_source_path', '')
+                #open_config_window()
+                #config = load_config()
+                #first_source_path = config.get('first_source_path', '')
+                #second_source_path = config.get('second_source_path', '')
 
-                if isInWSL:
-                    first_source_path = convert_path_for_wsl(first_source_path)
-                    second_source_path = convert_path_for_wsl(second_source_path)
-            else:
+                #if isInWSL:
+                    #first_source_path = convert_path_for_wsl(first_source_path)
+                    #second_source_path = convert_path_for_wsl(second_source_path)
+            #else:
 
                 # Show a warning dialog and delete files in the {model}_project folder.
-                messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
-                if os.path.exists(project_dir):
-                    shutil.rmtree(project_dir)  
-                return 
+                #messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
+                #if os.path.exists(project_dir):
+                    #shutil.rmtree(project_dir)  
+                #return 
     
-    while True:
+    #while True:
 
         # Check if the other path contains the required files
-        required_files = [
-            'F2837xD_Adc.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
-            'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
-            'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
-        ]
-        missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
+        #required_files = [
+        #    'F2837xD_Adc.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
+        #   'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
+        #   'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
+        #]
+        #missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
 
-        if missing_files:
-            missing_files_str = "\n".join(missing_files)
-            response = messagebox.askyesno(
-                "Missing Files",
-                f"The following files are missing in the path '{other_path}':\n{missing_files_str}\nDo you want to change the paths?"
-            )
-            if response:
-                open_config_window()
-                config = load_config()
+        #if missing_files:
+            #missing_files_str = "\n".join(missing_files)
+            #response = messagebox.askyesno(
+                #"Missing Files",
+                #f"The following files are missing in the path '{other_path}':\n{missing_files_str}\nDo you want to change the paths?"
+            #)
+            #if response:
+                #open_config_window()
+                #config = load_config()
               
-                first_source_path = config.get('first_source_path', '')
-                second_source_path = config.get('second_source_path', '')
+                #first_source_path = config.get('first_source_path', '')
+                #second_source_path = config.get('second_source_path', '')
 
-                if isInWSL:
-                    first_source_path = convert_path_for_wsl(first_source_path)
-                    second_source_path = convert_path_for_wsl(second_source_path)
+                #if isInWSL:
+                    #first_source_path = convert_path_for_wsl(first_source_path)
+                    #second_source_path = convert_path_for_wsl(second_source_path)
 
-                if GlobalVariableDefs_path == first_source_path:
-                    other_path = second_source_path
-                else:
-                    other_path = first_source_path
+                #if GlobalVariableDefs_path == first_source_path:
+                    #other_path = second_source_path
+                #else:
+                    #other_path = first_source_path
 
                 # Check again for the presence of the required files in the other updated path
-                missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
-                if not missing_files:
-                    break
-            else:
+                #missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
+                #if not missing_files:
+                    #break
+            #else:
 
                 # Show a warning dialog and delete files in the {model}_project folder
-                messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
-                if os.path.exists(project_dir):
-                    shutil.rmtree(project_dir)
-                return  # Exit the function if the user presses "No"
-        else:
+                #messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
+                #if os.path.exists(project_dir):
+                    #shutil.rmtree(project_dir)
+                #return  # Exit the function if the user presses "No"
+        #else:
 
             # All files are present, exit the loop
-            break
+            #break
     
     # Convert paths for windows
-    GlobalVariableDefs_path = convert_path_for_windows(GlobalVariableDefs_path)
-    other_path = convert_path_for_windows(other_path)
+    #GlobalVariableDefs_path = convert_path_for_windows(GlobalVariableDefs_path)
+    #other_path = convert_path_for_windows(other_path)
 
     if isInWSL:
 
-        # wsl path
-        if first_headers_path.startswith("/mnt/c/"):
-
-            # Convert in a windows path
-            first_headers_path = convert_path_for_windows(first_headers_path)
+        if ti_path.startswith("/mnt/c/"):
+            ti_path = convert_path_for_windows(ti_path)
         else: 
-            first_headers_path = first_headers_path.replace('\\', '/')
-        if second_headers_path.startswith("/mnt/c/"):
-            second_headers_path = convert_path_for_windows(second_headers_path)
-        else:
-            second_headers_path = second_headers_path.replace('\\', '/')
-        if third_headers_path.startswith("/mnt/c/"):
-            third_headers_path = convert_path_for_windows(third_headers_path)
-        else:
-            third_headers_path = third_headers_path.replace('\\', '/')
+            ti_path = ti_path.replace('\\', '/')
+        # wsl path
         if c2000ware_path.startswith("/mnt/c/"):
+            # Convert in a windows path
             c2000ware_path = convert_path_for_windows(c2000ware_path)
         else:
             c2000ware_path = c2000ware_path.replace('\\', '/')
@@ -1128,8 +1092,10 @@ def create_project_structure(model):
 
     # create the .project, .cproject, .ccsproject files
     create_ccsproject_file(model)
-    create_project_file(model, GlobalVariableDefs_path, other_path)
-    create_cproject_file(model, first_headers_path, second_headers_path, third_headers_path, c2000ware_path, include_dir_absolute_path)
+    create_project_file(model, c2000ware_path)
+    create_cproject_file(model, ti_path, c2000ware_path, include_dir_absolute_path)
 
     # Displays a message indicating that the project was created successfully
     messagebox.showinfo("Project Status", "Project successfully created")
+
+
