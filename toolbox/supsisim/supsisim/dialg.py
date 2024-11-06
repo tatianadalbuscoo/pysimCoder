@@ -1,3 +1,4 @@
+import os
 from supsisim.qtvers import *
 
 from supsisim.const import path
@@ -68,6 +69,10 @@ class RTgenDlg(QDialog):
         lab6 = QLabel('Priority')
         self.prio = QLineEdit('')
 
+        self.btnConfigure = QPushButton('Configure')
+        self.btnConfigure.hide()  # Initially hidden
+        self.btnConfigure.clicked.connect(self.configureScript)
+
         pbOK = QPushButton('OK')
         pbCANCEL = QPushButton('CANCEL')
         grid = QGridLayout()
@@ -75,6 +80,7 @@ class RTgenDlg(QDialog):
         grid.addWidget(lab1, 0, 0)
         grid.addWidget(self.template, 0, 1)
         grid.addWidget(btn_template, 0, 2)
+        grid.addWidget(self.btnConfigure, 0, 3)
         grid.addWidget(lab2, 1, 0)
         grid.addWidget(self.parscript, 1, 1)
         grid.addWidget(btn_script, 1, 2)
@@ -104,6 +110,19 @@ class RTgenDlg(QDialog):
             ln = fname.split('/')
             templ = ln[-1].__str__()
             self.template.setText(templ)
+
+            # Check if there is a .py file with the same name as the template (when loading the template)
+            script_path = os.path.join(path + 'CodeGen/templates', templ.replace('.tmf', '.py'))
+            if os.path.isfile(script_path):
+                self.btnConfigure.show()  
+            else:
+                self.btnConfigure.hide() 
+
+    def configureScript(self):
+        script_name = self.template.text().replace('.tmf', '.py')
+        script_path = os.path.join(path + 'CodeGen/templates', script_name)
+        if os.path.isfile(script_path):
+            print(f"Execute something in this script: {script_path}")
 
     def getObjs(self):
         fname = QFileDialog.getOpenFileName(self,'Additional libraries',

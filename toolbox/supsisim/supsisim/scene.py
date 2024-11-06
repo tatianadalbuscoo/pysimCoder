@@ -1,5 +1,6 @@
 from supsisim.qtvers import *
 
+from supsisim.const import path
 from supsisim.block import Block
 from supsisim.subsblock import subsBlock
 from supsisim.port import Port, InPort, OutPort
@@ -383,6 +384,14 @@ class Scene(QGraphicsScene):
         dialog.parscript.setText(self.script)
         dialog.Tf.setText(self.Tf)
         dialog.prio.setText(self.prio)
+
+        # Check if there is a .py file with the same name as the template (when the settings window opens)
+        script_path = os.path.join(path + 'CodeGen/templates', self.template.replace('.tmf', '.py'))
+        if os.path.isfile(script_path):
+            dialog.btnConfigure.show()
+        else:
+            dialog.btnConfigure.hide()
+
         res = dialog.exec()
         if res != 1:
             return
