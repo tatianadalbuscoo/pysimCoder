@@ -233,12 +233,13 @@ def convert_path_for_wsl(path):
 
     # Check if path isn't empty, and if the code is running in a WSL environment
     if path and 'microsoft' in os.uname().release.lower():
-        path = path.replace('\\', '/')
+        if '\\' in path or (len(path) > 1 and path[1] == ':'):
+            path = path.replace('\\', '/')
 
-        # Check if the path is something like C:\...
-        if path[1] == ':':
-            drive_letter = path[0].lower()
-            path = f"/mnt/{drive_letter}{path[2:]}"
+            # Check if the path is something like C:\...
+            if path[1] == ':':
+                drive_letter = path[0].lower()
+                path = f"/mnt/{drive_letter}{path[2:]}"
 
     return path
 
@@ -776,11 +777,106 @@ def copy_file_if_exists(src_file, dest_dir, file_name):
     if os.path.exists(src_file):
         shutil.copy(src_file, dest_dir)
 
+
+def delete_config_file():
+    if os.path.isfile(config_file):
+            os.remove(config_file)
+            messagebox.showinfo("Configuration", f"{config_file} has been deleted due to missing paths.")
+    
+
+def check_path(ti_path, c2000Ware_path):
+    
+    if isInWSL:
+        
+        # Path windows insert, eg: C:\ti\c2000\C2000Ware_4_01_00_00\device_support\f2837xd\headers\include
+        # convert in wsl path because must search for header files.
+        # Se è già in formato wsl non fa nulla
+        ti_path = convert_path_for_wsl(ti_path)
+        c2000Ware_path = convert_path_for_wsl(c2000Ware_path)
+
+    linker_path1 = os.path.join(c2000Ware_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd')
+    linker_path2 = os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd')
+
+    first_headers_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/include')
+    second_headers_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/common/include')
+    third_headers_path = os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include')
+
+    first_source_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/source')
+    second_source_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/common/source')
+
+
+    # Check if each path exists, collect missing paths
+    paths_to_check = {
+        "linker_path1": linker_path1,
+        "linker_path2": linker_path2,
+        "first_headers_path": first_headers_path,
+        "second_headers_path": second_headers_path,
+        "third_headers_path": third_headers_path,
+        "first_source_path": first_source_path,
+        "second_source_path": second_source_path
+    }
+
+    missing_paths = []
+    for path_name, path in paths_to_check.items():
+        if not os.path.exists(path):
+            missing_paths.append(f"{path_name}: {path}")
+
+    # Show a warning if any paths are missing
+    if missing_paths:
+        missing_paths_str = "\n".join(missing_paths)
+        messagebox.showwarning("Missing Paths", f"The following paths are missing:\n{missing_paths_str}")
+        # Delete config.json if any paths are missing
+        delete_config_file()
+        return
+    
+    # Check source file
+    file_name = 'F2837xD_GlobalVariableDefs.c'
+    file_path = os.path.join(first_source_path, file_name)
+    
+    # Check if the file does NOT exist
+    if not os.path.isfile(file_path):
+        messagebox.showwarning("Missing File", f"'{file_path}' not found.")
+
+        # Delete config.json if any paths are missing
+        delete_config_file()
+        return
+    
+    # List of required files
+    required_files = [
+        'F2837xD_CpuTimers.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
+        'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
+        'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
+    ]
+    
+    # Check each file's existence
+    missing_files = [file for file in required_files if not os.path.isfile(os.path.join(second_source_path, file))]
+
+    # Show message based on whether files are missing
+    if missing_files:
+        missing_files_str = "\n".join(missing_files)
+        messagebox.showwarning(
+            "Missing Files",
+            f"The following files are missing in {second_source_path}:\n{missing_files_str}"
+        )
+        delete_config_file()
+        return
+
+    else:
+        messagebox.showinfo("Paths and src files Check", "All required paths exist and all required files are present.")
+        
+
+
+
 def press_configure_button():
     check_wsl_environment()
     open_config_window()
 
-    # qua dovrà cercare e controllare i percorsi e i file
+    config = load_config()
+    ti_path = config.get('ti_path', '')
+    c2000ware_path = config.get('c2000ware_path', '')
+
+    check_path(ti_path, c2000ware_path)
+
 
    
     
@@ -954,104 +1050,7 @@ def create_project_structure(model):
             if os.path.isfile(full_file_name):
                 shutil.copy(full_file_name, targetConfigs_dir)
 
-    #if isInWSL:
-        
-        # Path windows insert, eg: C:\ti\c2000\C2000Ware_4_01_00_00\device_support\f2837xd\headers\include
-        # convert in wsl path because must search for src files.
-        #if first_source_path.startswith("C:\\") or first_source_path.startswith("c:\\"):
-            #first_source_path = convert_path_for_wsl(first_source_path)
-        #if second_source_path.startswith("C:\\") or second_source_path.startswith("c:\\"):
-            #second_source_path = convert_path_for_wsl(second_source_path)
-
-    #while True:
-
-        # Check if one of the paths contains the specific file
-        #file_name = 'F2837xD_GlobalVariableDefs.c'
-        #file_in_first = os.path.isfile(os.path.join(first_source_path, file_name))
-        #file_in_second = os.path.isfile(os.path.join(second_source_path, file_name))
-
-        #if file_in_first:
-            #GlobalVariableDefs_path = first_source_path
-            #other_path = second_source_path
-            #break  
-        #elif file_in_second:
-            #GlobalVariableDefs_path = second_source_path
-            #other_path = first_source_path
-            #break
-        #else:
-            # Warning dialog if file is not present in any of the paths.
-            #response = messagebox.askyesno("File not found", f"{file_name} not found in the given source paths. Do you want to change the paths?")
-            #if response:
-
-                # Reopens the configuration window to edit the paths.
-                #open_config_window()
-                #config = load_config()
-                #first_source_path = config.get('first_source_path', '')
-                #second_source_path = config.get('second_source_path', '')
-
-                #if isInWSL:
-                    #first_source_path = convert_path_for_wsl(first_source_path)
-                    #second_source_path = convert_path_for_wsl(second_source_path)
-            #else:
-
-                # Show a warning dialog and delete files in the {model}_project folder.
-                #messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
-                #if os.path.exists(project_dir):
-                    #shutil.rmtree(project_dir)  
-                #return 
-    
-    #while True:
-
-        # Check if the other path contains the required files
-        #required_files = [
-        #    'F2837xD_Adc.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
-        #   'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
-        #   'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
-        #]
-        #missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
-
-        #if missing_files:
-            #missing_files_str = "\n".join(missing_files)
-            #response = messagebox.askyesno(
-                #"Missing Files",
-                #f"The following files are missing in the path '{other_path}':\n{missing_files_str}\nDo you want to change the paths?"
-            #)
-            #if response:
-                #open_config_window()
-                #config = load_config()
-              
-                #first_source_path = config.get('first_source_path', '')
-                #second_source_path = config.get('second_source_path', '')
-
-                #if isInWSL:
-                    #first_source_path = convert_path_for_wsl(first_source_path)
-                    #second_source_path = convert_path_for_wsl(second_source_path)
-
-                #if GlobalVariableDefs_path == first_source_path:
-                    #other_path = second_source_path
-                #else:
-                    #other_path = first_source_path
-
-                # Check again for the presence of the required files in the other updated path
-                #missing_files = [file for file in required_files if not os.path.isfile(os.path.join(other_path, file))]
-                #if not missing_files:
-                    #break
-            #else:
-
-                # Show a warning dialog and delete files in the {model}_project folder
-                #messagebox.showinfo("Project Status", "Project not generated. Cleaning up project files...")
-                #if os.path.exists(project_dir):
-                    #shutil.rmtree(project_dir)
-                #return  # Exit the function if the user presses "No"
-        #else:
-
-            # All files are present, exit the loop
-            #break
-    
-    # Convert paths for windows
-    #GlobalVariableDefs_path = convert_path_for_windows(GlobalVariableDefs_path)
-    #other_path = convert_path_for_windows(other_path)
-
+   
 
     # Absolute path include directory
     include_dir_absolute_path = os.path.abspath(include_dir)
