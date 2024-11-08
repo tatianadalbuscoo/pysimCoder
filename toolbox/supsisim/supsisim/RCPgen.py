@@ -88,12 +88,13 @@ def genProjectStructure(model, template):
     script_path = os.path.join(template_path, 'CodeGen', 'templates', base_name + '.py')
     if os.path.exists(script_path):
 
-        # Loads the module from the given path
+        # Loads the module
         module = load_module(script_path)
 
         if module:
 
             # Check if the method 'create_project_structure' exists
+
             if hasattr(module, 'create_project_structure'):
                 module.create_project_structure(model)
 

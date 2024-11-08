@@ -2,6 +2,7 @@ import os
 from supsisim.qtvers import *
 
 from supsisim.const import path
+from supsisim.RCPgen import load_module
 
 class IO_Dialog(QDialog):
     def __init__(self,parent=None):
@@ -122,7 +123,15 @@ class RTgenDlg(QDialog):
         script_name = self.template.text().replace('.tmf', '.py')
         script_path = os.path.join(path + 'CodeGen/templates', script_name)
         if os.path.isfile(script_path):
-            print(f"Execute something in this script: {script_path}")
+            module = load_module(script_path)
+            if module:
+                if hasattr(module, 'press_configure_button'):
+                    module.press_configure_button() 
+            else:
+                print("Failed to load the module.")
+        else:
+            print(f"Script path {script_path} does not exist.")
+
 
     def getObjs(self):
         fname = QFileDialog.getOpenFileName(self,'Additional libraries',

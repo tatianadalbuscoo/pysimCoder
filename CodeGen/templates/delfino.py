@@ -24,7 +24,6 @@ import tkinter as tk
         
 """
 
-# Tells if we are on wsl or a linux environment
 isInWSL = False
 
 # File name where to save the paths
@@ -735,6 +734,8 @@ def copy_files_based_on_content(destination_file, src_path, include_path, device
     -------
     - Prints an error message if `destination_file` is not found or if an I/O error occurs.
     """
+    
+    
     try:
         with open(destination_file, 'r') as file:
             content = file.read()
@@ -753,6 +754,7 @@ def copy_files_based_on_content(destination_file, src_path, include_path, device
         print(f"The file {destination_file} isn't found'")
     except IOError as e:
         print(f"I/O Error {e}")
+
 
 
 def copy_file_if_exists(src_file, dest_dir, file_name):
@@ -774,8 +776,20 @@ def copy_file_if_exists(src_file, dest_dir, file_name):
     if os.path.exists(src_file):
         shutil.copy(src_file, dest_dir)
 
+def press_configure_button():
+    check_wsl_environment()
+    open_config_window()
+
+    # qua dovrà cercare e controllare i percorsi e i file
+
+   
+    
+    
+
+    
 
 def create_project_structure(model):
+    check_wsl_environment()
 
     """
     Main function to create a complete project structure for a specified model.
@@ -805,13 +819,34 @@ def create_project_structure(model):
 
     """
 
-    check_wsl_environment()
-    open_config_window()
+    # Define paths for config.json in the directory where {model}_gen will be created and inside {model}_gen
+    parent_dir = os.path.dirname(os.path.abspath('.'))
+    config_path_outside_gen = os.path.join(parent_dir, 'config.json')
+    config_path_inside_gen = os.path.join(parent_dir, f'{model}_gen', 'config.json')
 
-    # It makes sure that the data being worked on has been freshly modified by the user.
+    # Check if config.json exists in the parent directory and copy it to {model}_gen, overwriting if needed
+    if os.path.isfile(config_path_outside_gen):
+        os.makedirs(os.path.join(parent_dir, f'{model}_gen'), exist_ok=True)  # Ensure {model}_gen directory exists
+        shutil.copy(config_path_outside_gen, config_path_inside_gen)  # Copy and overwrite if exists
+    else:
+        messagebox.showinfo("File Status", f"config.json not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
+        return 
+
     config = load_config()
     ti_path = config.get('ti_path', '')
     c2000ware_path = config.get('c2000ware_path', '')
+
+    if isInWSL:
+        if ti_path.startswith("/mnt/c/"):
+            ti_path = convert_path_for_windows(ti_path)
+        else: 
+            ti_path = ti_path.replace('\\', '/')
+        # wsl path
+        if c2000ware_path.startswith("/mnt/c/"):
+            # Convert in a windows path
+            c2000ware_path = convert_path_for_windows(c2000ware_path)
+        else:
+            c2000ware_path = c2000ware_path.replace('\\', '/')
 
     pysimCoder_path = environ.get('PYSUPSICTRL')
     include_path = pysimCoder_path + '/CodeGen/Delfino/include'
@@ -1017,18 +1052,6 @@ def create_project_structure(model):
     #GlobalVariableDefs_path = convert_path_for_windows(GlobalVariableDefs_path)
     #other_path = convert_path_for_windows(other_path)
 
-    if isInWSL:
-
-        if ti_path.startswith("/mnt/c/"):
-            ti_path = convert_path_for_windows(ti_path)
-        else: 
-            ti_path = ti_path.replace('\\', '/')
-        # wsl path
-        if c2000ware_path.startswith("/mnt/c/"):
-            # Convert in a windows path
-            c2000ware_path = convert_path_for_windows(c2000ware_path)
-        else:
-            c2000ware_path = c2000ware_path.replace('\\', '/')
 
     # Absolute path include directory
     include_dir_absolute_path = os.path.abspath(include_dir)
