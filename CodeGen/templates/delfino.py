@@ -4,8 +4,9 @@ import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
 from os import environ
 import json
-from tkinter import Tk, Label, Entry, Button, StringVar, messagebox, filedialog
+from tkinter import Tk, Label, Entry, Button, StringVar, messagebox, filedialog, Toplevel
 import tkinter as tk
+from tkinter.scrolledtext import ScrolledText
 
 """The following commands are provided:
 
@@ -781,89 +782,181 @@ def copy_file_if_exists(src_file, dest_dir, file_name):
 def delete_config_file():
     if os.path.isfile(config_file):
             os.remove(config_file)
-            messagebox.showinfo("Configuration", f"{config_file} has been deleted due to missing paths.")
+            messagebox.showinfo("Configuration", f"{config_file} has been deleted.")
     
+
+
+def advise(title, message):
+    # Inizializza la finestra principale
+    root = tk.Tk()
+    root.title(title)
+    root.geometry("650x400")  # Dimensioni della finestra
+
+    # Variabile di risposta per il ritorno
+    response = tk.BooleanVar(value=False)
+
+    # Impedisce la chiusura tramite la croce
+    root.protocol("WM_DELETE_WINDOW", lambda: None)
+
+    # Etichetta per il titolo
+    Label(root, text=title, font=("Helvetica", 16, "bold")).pack(pady=10)
+
+    # Frame per contenere il Text e le barre di scorrimento
+    frame = tk.Frame(root)
+    frame.pack(pady=10, padx=20, fill="both", expand=True)
+
+    # Creazione del widget Text senza wrapping automatico
+    text_box = tk.Text(frame, wrap="none", width=70, height=15)
+    text_box.insert("1.0", message)  # Inserisce il messaggio
+    text_box.config(state="disabled")  # Impedisce la modifica del testo
+
+    # Creazione della barra di scorrimento verticale e orizzontale
+    y_scroll = tk.Scrollbar(frame, orient="vertical", command=text_box.yview)
+    x_scroll = tk.Scrollbar(frame, orient="horizontal", command=text_box.xview)
+
+    # Configura il Text per utilizzare le barre di scorrimento
+    text_box.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+    # Posiziona il Text e le barre di scorrimento nel frame
+    text_box.grid(row=0, column=0, sticky="nsew")
+    y_scroll.grid(row=0, column=1, sticky="ns")
+    x_scroll.grid(row=1, column=0, sticky="ew")
+
+    # Configura il layout del frame per espandere il Text
+    frame.grid_rowconfigure(0, weight=1)
+    frame.grid_columnconfigure(0, weight=1)
+
+    # Funzione per impostare la risposta e chiudere la finestra
+    def set_response(value):
+        response.set(value)
+        root.quit()  # Chiude il mainloop e la finestra principale
+
+    # Bottoni Si e No
+    Button(root, text="Yes", command=lambda: set_response(True)).pack(side="left", padx=20, pady=5, expand=True)
+    Button(root, text="No", command=lambda: set_response(False)).pack(side="right", padx=20, pady=5, expand=True)
+
+    # Avvia il mainloop di Tkinter e attende la chiusura della finestra
+    root.mainloop()
+
+    # Chiude la finestra principale
+    root.destroy()
+
+    # Ritorna la risposta
+    return response.get()
+
+def update_paths(ti_path, c2000ware_path):
+    """Aggiorna i percorsi in base ai nuovi valori di `ti_path` e `c2000ware_path`."""
+    # Aggiorna i percorsi usando i nuovi valori di ti_path e c2000ware_path
+    paths_to_check = {
+        "linker_path1": os.path.join(c2000ware_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
+        "linker_path2": os.path.join(c2000ware_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
+        "first_headers_path": os.path.join(c2000ware_path, 'device_support/f2837xd/headers/include'),
+        "second_headers_path": os.path.join(c2000ware_path, 'device_support/f2837xd/common/include'),
+        "third_headers_path": os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'),
+        "first_source_path": os.path.join(c2000ware_path, 'device_support/f2837xd/headers/source'),
+        "second_source_path": os.path.join(c2000ware_path, 'device_support/f2837xd/common/source')
+    }
+    return paths_to_check
+
+
 
 def check_path(ti_path, c2000Ware_path):
     
+    # Converti i percorsi in formato WSL
     if isInWSL:
-        
-        # Path windows insert, eg: C:\ti\c2000\C2000Ware_4_01_00_00\device_support\f2837xd\headers\include
-        # convert in wsl path because must search for header files.
-        # Se è già in formato wsl non fa nulla
         ti_path = convert_path_for_wsl(ti_path)
         c2000Ware_path = convert_path_for_wsl(c2000Ware_path)
 
-    linker_path1 = os.path.join(c2000Ware_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd')
-    linker_path2 = os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd')
+    def update_paths(ti_path, c2000Ware_path):
+        return {
+            "linker_path1": os.path.join(c2000Ware_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
+            "linker_path2": os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
+            "first_headers_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/include'),
+            "second_headers_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/common/include'),
+            "third_headers_path": os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'),
+            "first_source_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/source'),
+            "second_source_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/common/source')
+        }
 
-    first_headers_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/include')
-    second_headers_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/common/include')
-    third_headers_path = os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include')
+    paths_to_check = update_paths(ti_path, c2000Ware_path)
 
-    first_source_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/source')
-    second_source_path = os.path.join(c2000Ware_path, 'device_support/f2837xd/common/source')
+    # Verifica i percorsi e file mancanti
+    while True:
+        # Controlla i percorsi mancanti
+        missing_paths = [f"{path_name}: {path}" for path_name, path in paths_to_check.items() if not os.path.exists(path)]
+
+        # Se ci sono percorsi mancanti, chiedi di aggiornarli o eliminare il file config.json
+        if missing_paths:
+            missing_paths_str = "\n\n".join(missing_paths)
+            response = advise(
+                "The following paths are missing:",
+                f"{missing_paths_str}\n\nDo you want to change paths (Yes) or delete the config.json file (No)"
+            )
+            if response:
+                open_config_window()
+
+                # Ricarica i percorsi aggiornati dalla nuova configurazione
+                config = load_config()
+                ti_path_update = config.get('ti_path', '')
+                c2000ware_path_update = config.get('c2000ware_path', '')
+
+                if isInWSL:
+                    ti_path_update = convert_path_for_wsl(ti_path_update)
+                    c2000ware_path_update = convert_path_for_wsl(c2000ware_path_update)
+
+                # Aggiorna i percorsi da controllare con i nuovi valori
+                paths_to_check = update_paths(ti_path_update, c2000ware_path_update)
+            else:
+                delete_config_file()
+                return  # Esci dalla funzione se si sceglie di eliminare config.json
+        else:
+            file_name = 'F2837xD_GlobalVariableDefs.c'
+            file_path = os.path.join(paths_to_check["first_source_path"], file_name)
+            missing_files = []
+            if not os.path.isfile(file_path):
+                missing_files.append(file_name)
+
+            # Controlla altri file richiesti
+            required_files = [
+                'F2837xD_CpuTimers.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
+                'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
+                'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
+            ]
+
+            # Aggiunge eventuali altri file mancanti alla lista
+            missing_files += [
+                file for file in required_files
+                if not os.path.isfile(os.path.join(paths_to_check["second_source_path"], file))
+            ]
+
+            if missing_files:
+                missing_message = "The following files are missing:\n\n"
+                for file in missing_files:
+                    if "GlobalVariable" in file:
+                        # Percorso specifico per F2837xD_GlobalVariableDefs.c
+                        missing_message += f"{file} in {paths_to_check['first_source_path']}\n\n"
+                    else:
+                        # Percorso per altri file in second_source_path
+                        missing_message += f"{file} in {paths_to_check['second_source_path']}\n\n"
+                missing_message += "\n\n"
+
+                response = advise(
+                    "Missing Paths or Files",
+                    f"{missing_message}Do you want to delete the config.json file (Yes) or not (No)"
+                )
 
 
-    # Check if each path exists, collect missing paths
-    paths_to_check = {
-        "linker_path1": linker_path1,
-        "linker_path2": linker_path2,
-        "first_headers_path": first_headers_path,
-        "second_headers_path": second_headers_path,
-        "third_headers_path": third_headers_path,
-        "first_source_path": first_source_path,
-        "second_source_path": second_source_path
-    }
+                if response:
+                    delete_config_file()
+                    return 
+                else:
+                    return  # Esce dalla funzione
+            else:
+                # Tutti i percorsi e file richiesti sono presenti
+                messagebox.showinfo("Paths and Files Check", "All required paths and files are present.")
 
-    missing_paths = []
-    for path_name, path in paths_to_check.items():
-        if not os.path.exists(path):
-            missing_paths.append(f"{path_name}: {path}")
+                break
 
-    # Show a warning if any paths are missing
-    if missing_paths:
-        missing_paths_str = "\n".join(missing_paths)
-        messagebox.showwarning("Missing Paths", f"The following paths are missing:\n{missing_paths_str}")
-        # Delete config.json if any paths are missing
-        delete_config_file()
-        return
-    
-    # Check source file
-    file_name = 'F2837xD_GlobalVariableDefs.c'
-    file_path = os.path.join(first_source_path, file_name)
-    
-    # Check if the file does NOT exist
-    if not os.path.isfile(file_path):
-        messagebox.showwarning("Missing File", f"'{file_path}' not found.")
-
-        # Delete config.json if any paths are missing
-        delete_config_file()
-        return
-    
-    # List of required files
-    required_files = [
-        'F2837xD_CpuTimers.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
-        'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
-        'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
-    ]
-    
-    # Check each file's existence
-    missing_files = [file for file in required_files if not os.path.isfile(os.path.join(second_source_path, file))]
-
-    # Show message based on whether files are missing
-    if missing_files:
-        missing_files_str = "\n".join(missing_files)
-        messagebox.showwarning(
-            "Missing Files",
-            f"The following files are missing in {second_source_path}:\n{missing_files_str}"
-        )
-        delete_config_file()
-        return
-
-    else:
-        messagebox.showinfo("Paths and src files Check", "All required paths exist and all required files are present.")
-        
 
 
 
