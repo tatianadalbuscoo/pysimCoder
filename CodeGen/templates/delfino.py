@@ -184,7 +184,7 @@ def open_config_window():
     # Load current config or set empty strings
     current_config = load_config()
     ti_path = tk.StringVar(root, value=current_config.get('ti_path', ''))
-    c2000_path = tk.StringVar(root, value=current_config.get('c2000_path', ''))
+    c2000_path = tk.StringVar(root, value=current_config.get('c2000Ware_path', ''))
 
     # Function to open file dialog and set path in the corresponding entry field
     def select_directory(var):
