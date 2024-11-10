@@ -71,8 +71,8 @@ def genProjectStructure(model, template):
     
     Parameters
     ----------
-    model: The name of the model.
-    template: The template file (e.g., 'delfino.tmf') from which the corresponding Python script (e.g., 'delfino.py') is derived.
+    model    : The name of the model.
+    template : The template file (e.g., 'delfino.tmf') from which the corresponding Python script (e.g., 'delfino.py') is derived.
     
     Returns
     -------

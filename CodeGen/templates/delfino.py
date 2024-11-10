@@ -2,29 +2,32 @@ import os
 import sys
 import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
-from os import environ
 import json
-from tkinter import Tk, Label, Entry, Button, StringVar, messagebox, filedialog, Toplevel
 import tkinter as tk
-from tkinter.scrolledtext import ScrolledText
+from tkinter import messagebox
 
-"""The following commands are provided:
+""" The following commands are provided:
 
     - Create a valid project for CCS
         - This script works on linux environment and on wsl.
-        - The paths where to find the source files and headers needed by the CCS project (not the blocks) are configurable.
-            - If it does not find the src files in the paths entered, which CCS uses, the project is not created and everything is cleaned.
+        - If you press Settings -> Settings -> Configure in the pysimCoder menu you can configure the paths of the working folders (ti and C2000Ware_4_01_00_00), creating a config.json file.
+            - Without the config.json file it is not possible to generate the code to generate the project for CCS.
+            - If it does not find the paths necessary in the paths entered, which CCS uses, the project is not created and everything is cleaned.
+            - If it does not find the src files in the paths, it asks if you want to keep the config.json file or delete it. 
             - Paths can be entered for both windows and wsl (Selectable from the browser button where to insert the path) eg:
-                - C:\ti\c2000\C2000Ware_4_01_00_00\device_support\f2837xd\headers\source
-                - /mnt/c/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/source
-        - Save these paths to a .json file for future runs
+                - C:\ti\c2000\C2000Ware_4_01_00_00
+                - /mnt/c/ti/c2000/C2000Ware_4_01_00_00
+        - Save these paths to a config.json file for future runs
         - Organize all files in a hierarchy and create .project .cproject and .ccsproject files with user-entered paths.
-        - Generates the main file (adc_soc_epwm_cpu01.c) that calls the functions that PysimCoder creates, changing their name.
+        - Generates the main file (cpu_timers_cpu01.c) that calls the functions that PysimCoder creates, changing their name.
         - Include only files that use blocks in your project e.g.:
             - If {model}.c contains the word inputGPIOblk includes: inputGPIOblk.c, button.c and button.h
         
 """
 
+# Global variables
+
+# Saved if it is a linux environment or wsl
 isInWSL = False
 
 # File name where to save the paths
@@ -33,43 +36,55 @@ config_file = 'config.json'
 # Main window in Tkinter
 root = None
 
-def check_wsl_environment():
-    """Detects if running on WSL or native Linux and sets isInWSL accordingly."""
-    global isInWSL
-    # Check for 'Microsoft' in the release name, common for WSL.
-    isInWSL = 'microsoft' in os.uname().release.lower()
 
+def check_wsl_environment():
+
+    """ Detects if the environment is running within Windows Subsystem for Linux (WSL).
+
+    This function determines whether the current environment is WSL or a native Linux
+    installation by inspecting the system's release name. It sets the global variable 
+    `isInWSL` to `True` if WSL is detected, otherwise `False`.
+
+    Example Call:
+    -------------
+    check_wsl_environment()
+
+    Parameters
+    ----------
+    -
+
+    Returns
+    -------
+    -
+
+    """
+
+    global isInWSL
+    isInWSL = 'microsoft' in os.uname().release.lower()
 
 
 def load_config():
 
-    """Loads paths from the config.json file if it exists.
-
+    """ Loads paths from the config.json file if it exists.
+    
     This function attempts to read and load data from a JSON configuration file
     named `config.json`, which is specified by the global `config_file` variable.
     If the file exists, its contents are parsed and returned as a dictionary.
     If the file does not exist, an empty dictionary is returned.
 
-    Call:
-    -----
+    Example Call:
+    -------------
     config_data = load_config()
-
-    Functionality:
-    --------------
-    - Checks if the `config.json` file exists in the current working directory.
-    - Opens and reads the file if it is found, returning the parsed JSON data.
-    - Returns an empty dictionary if the file is not present.
+    
+    Parameters
+    ----------
+    -
 
     Returns:
     --------
     dict
-        A dictionary containing the parsed configuration data if the file exists.
-        An empty dictionary if the file does not exist.
-
-    Raises:
-    -------
-    - May raise `json.JSONDecodeError` if the `config.json` file is not formatted correctly.
-    - May raise `OSError` if there are issues reading the file.
+    - A dictionary containing the parsed configuration data if the file exists.
+    - An empty dictionary if the file does not exist.
 
     """
 
@@ -79,44 +94,33 @@ def load_config():
     return {}
 
 
-def save_config(ti_path, c2000ware_path):
+def save_config(ti_path, c2000Ware_path):
+    
+    """ Saves paths to the `config.json` file.
 
-    """Saves the provided paths to a config.json file.
+    This function saves the specified paths to a JSON configuration file named `config.json`.
+    It writes the provided paths to the file, creating or overwriting the file if it already exists.
+    A message box is displayed to inform the user that the paths have been saved successfully.
 
-    This function takes multiple file paths as arguments and stores them in a 
-    dictionary, which is then serialized and written to a JSON configuration 
-    file named `config.json`. After successfully saving the data, a message box 
-    is displayed to inform the user.
-
-    Call:
-    -----
-    save_config(second_headers_path, third_headers_path, first_source_path, second_source_path, c2000ware_path)
+    Example Call:
+    -------------
+    save_config(ti_path="path/to/ti", c2000Ware_path="path/to/c2000ware")
 
     Parameters:
     -----------
-    first_headers_path : Path to the first header files.
-    second_headers_path : Path to the second header files.
-    third_headers_path : Path to the third header files.
-    first_source_path : Path to the first source files.
-    second_source_path : Path to the second source files.
-    c2000ware_path : Path to the C2000Ware installation.
+    ti_path        : The path for TI folder.
+    c2000Ware_path : The path for C2000Ware folder.
 
-    Functionality:
-    --------------
-    - Creates a dictionary containing the provided file paths.
-    - Writes this dictionary to a `config.json` file in the current directory.
-    - Displays a confirmation message box once the data is successfully saved.
-
-    Raises:
-    -------
-    - May raise `OSError` if there are issues writing to the `config.json` file.
+    Returns:
+    --------
+    -
 
     """
-
+    
     # Dictionary to save in .json file
     config = {
         'ti_path': ti_path,
-        'c2000ware_path': c2000ware_path
+        'c2000Ware_path': c2000Ware_path
     }
 
     with open(config_file, 'w') as file:
@@ -124,105 +128,118 @@ def save_config(ti_path, c2000ware_path):
     messagebox.showinfo("Configuration Saved", "Paths saved successfully!")
 
 
+def delete_config_file():
+    
+    """ Deletes the configuration file if it exists.
+
+    This function checks if the configuration file exists in the
+    current directory. If found, it deletes the file and shows a confirmation 
+    message to the user.
+
+    Example Call:
+    -------------
+    delete_config_file()
+
+    Parameters:
+    -----------
+    -
+
+    Returns:
+    --------
+    -
+
+    """
+
+    if os.path.isfile(config_file):
+            os.remove(config_file)
+            messagebox.showinfo("Configuration", f"{config_file} has been deleted.")
+
+
 def open_config_window():
 
-    """Opens a Tkinter window for configuration to set and save file paths.
+    """ Opens a Tkinter window for configuration to set and save file paths.
 
     This function creates a graphical user interface (GUI) using Tkinter that allows
     users to input or select various file paths and save them to a `config.json` file.
     The window provides entry fields for paths and buttons to browse directories.
 
-    Call:
-    -----
+    Example Call:
+    -------------
     open_config_window()
 
-    Functionality:
-    --------------
-    - Loads current configuration data if `config.json` exists, otherwise sets default empty values.
-    - Provides entry fields for:
-        - First headers path.
-        - Second headers path.
-        - Third headers path.
-        - First source path.
-        - Second source path.
-    - Includes "Browse" buttons that open a file dialog to select directories.
-    - Saves the updated paths to `config.json` when the "Save" button is clicked.
-    - Closes the window after saving the configuration.
+    Parameters
+    ----------
+    -
 
-    Raises:
+    Returns
     -------
-    - `OSError` if there are issues writing to the `config.json` file.
+    -
 
     """
 
     global root
-    root = Tk()
+    root = tk.Tk()
     root.title("Configuration")
 
     # Load current config or set empty strings
     current_config = load_config()
-    ti_path = StringVar(root, value=current_config.get('ti_path', ''))
-    c2000ware_path = StringVar(root, value=current_config.get('c2000ware_path', ''))
+    ti_path = tk.StringVar(root, value=current_config.get('ti_path', ''))
+    c2000_path = tk.StringVar(root, value=current_config.get('c2000_path', ''))
 
     # Function to open file dialog and set path in the corresponding entry field
     def select_directory(var):
 
         # Opens a dialog box that allows the user to select a directory
-        selected_path = filedialog.askdirectory()
+        selected_path = tk.filedialog.askdirectory()
 
         if selected_path:
             var.set(selected_path)
 
-    Label(root, text="ti folder path:").grid(row=0, column=0, sticky='e')
-    entry_ti = Entry(root, textvariable=ti_path, width=100)
+    tk.Label(root, text="ti folder path:").grid(row=0, column=0, sticky='e')
+    entry_ti = tk.Entry(root, textvariable=ti_path, width=100)
     entry_ti.grid(row=0, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(ti_path)).grid(row=0, column=2)
+    tk.Button(root, text="Browse", command=lambda: select_directory(ti_path)).grid(row=0, column=2)
 
-    Label(root, text="C2000Ware_4_01_00_00 folder path:").grid(row=1, column=0, sticky='e')
-    entry_c2000ware = Entry(root, textvariable=c2000ware_path, width=100)
+    tk.Label(root, text="C2000Ware_4_01_00_00 folder path:").grid(row=1, column=0, sticky='e')
+    entry_c2000ware = tk.Entry(root, textvariable=c2000_path, width=100)
     entry_c2000ware.grid(row=1, column=1, pady=5)
-    Button(root, text="Browse", command=lambda: select_directory(c2000ware_path)).grid(row=1, column=2)
+    tk.Button(root, text="Browse", command=lambda: select_directory(c2000_path)).grid(row=1, column=2)
 
     # Save the inputs and close window
     def save_and_close():
-        save_config(ti_path.get(), c2000ware_path.get())
+        save_config(ti_path.get(), c2000_path.get())
 
-        # Destroys all widgets and terminates the main loop (closes the graphical interface)
-        root.destroy()
+        # Stop the mainloop without closing the window.
+        root.quit()
 
-    # save_and_close() will be called when the user clicks "Save" button.
-    Button(root, text="Save", command=save_and_close).grid(row=2, column=1, pady=10, sticky='e')
+    tk.Button(root, text="Save", command=save_and_close).grid(row=2, column=1, pady=10, sticky='e')
 
     # Start the main loop of the Tkinter application
     root.mainloop()
 
+    # Close the main window
+    root.destroy()
+
 
 def convert_path_for_wsl(path):
 
-    """Converts a Windows path to a WSL-compatible path.
+    """ Converts a Windows path to a WSL-compatible path.
 
     This function takes a Windows-style file path and converts it to a format 
     that can be used within WSL. The function 
     checks if the current environment is WSL before performing the conversion.
 
-    Call:
-    -----
+    Example Call:
+    -------------
     new_path = convert_path_for_wsl(path)
 
     Parameters:
     -----------
-    path : The file path in Windows format (e.g., "C:\\Users\\user\\path").
-
-    Functionality:
-    --------------
-    - Check if path isn't empty, and if the code is running in a WSL environment
-    - Converts backslashes (`\\`) in the path to forward slashes (`/`).
-    - Checks if the path starts with a drive letter (e.g., "C:").
-    - Converts paths like "C:\\Users\\user\\path" to "/mnt/c/Users/user/path", 
-      which is the format required by WSL.
+    path       : The file path in Windows format (e.g., "C:\\Users\\user\\path").
 
     Returns:
     --------
+    str
     - The converted WSL-compatible path. If the path is already compatible or the conditions are not met, returns the original path unchanged.
 
     Example:
@@ -233,7 +250,7 @@ def convert_path_for_wsl(path):
     """
 
     # Check if path isn't empty, and if the code is running in a WSL environment
-    if path and 'microsoft' in os.uname().release.lower():
+    if path and isInWSL:
         if '\\' in path or (len(path) > 1 and path[1] == ':'):
             path = path.replace('\\', '/')
 
@@ -247,28 +264,23 @@ def convert_path_for_wsl(path):
 
 def convert_path_for_windows(path):
 
-    """Converts a WSL path to a Windows-compatible path while maintaining slashes ('/').
+    """ Converts a WSL path to a Windows-compatible path while maintaining slashes ('/').
 
     This function takes a path formatted for WSL and converts it to a Windows path format, preserving the use of forward slashes ('/')
     instead of backslashes ('\\'). The function checks if the path is a WSL path and 
     if it is running in a WSL environment before performing the conversion.
 
-    Call:
-    -----
+    Example Call:
+    -------------
     new_path = convert_path_for_windows(path)
 
     Parameters:
     -----------
-    path : The file path in WSL format (e.g., "/mnt/c/Users/user/path").
-
-    Functionality:
-    --------------
-    - Checks if the path starts with '/mnt/', which is indicative of a WSL path.
-    - Extracts the drive letter from the path and converts it to uppercase with a colon (':').
-    - Joins the remaining parts of the path to create a Windows path (e.g., "C:/Users/user/path").
+    path       : The file path in WSL format (e.g., "/mnt/c/Users/user/path").
 
     Returns:
     --------
+    str
     - The converted Windows-compatible path. If the path is not a WSL path or we aren't in a wsl envoirment the original path is returned.
 
     Example:
@@ -279,7 +291,7 @@ def convert_path_for_windows(path):
     """
 
     # Check if starts with /mnt/, and if the code is running in a WSL environment
-    if path.startswith('/mnt/') and 'microsoft' in os.uname().release.lower():
+    if path.startswith('/mnt/') and isInWSL:
         parts = path.split('/')
         drive_letter = parts[2].upper() + ':'
         windows_path = drive_letter + '/' + '/'.join(parts[3:])
@@ -287,67 +299,100 @@ def convert_path_for_windows(path):
     return path 
 
 
-def check_required_files_in_path(path, required_files):
+def copy_files_based_on_content(file_to_inspection, src_path, include_path, devices_path, src_dir, include_dir):
+    
+    """ Copies specific files based on the content of a file to inspection.
 
-    """Checks if all required files are present in the specified directory.
+    This function reads the contents of a specified `file_to_inspection` and checks for 
+    the presence of specific keywords ('inputGPIOblk' and 'outputGPIOblk'). If a keyword 
+    is found, it copies corresponding files from various source paths to destination directories.
 
-    This function verifies the existence of specific files in a given directory.
-    It takes a list of filenames that are required and checks if each one exists
-    in the provided path. If any files are missing, it returns a list of those files.
-
-    Call:
-    -----
-    missing_files = check_required_files_in_path(path, required_files)
+    Example Call:
+    -------------
+    copy_files_based_on_content(file_to_inspection="path/to/destination", src_path="src/path", 
+                                include_path="include/path", devices_path="devices/path", 
+                                src_dir="src/dir", include_dir="include/dir")
 
     Parameters:
     -----------
-    path : The directory path where the files should be checked.
-    required_files : A list of filenames that need to be present in the specified path.
-
-    Functionality:
-    --------------
-    - Collects files that do not exist in the `missing_files` list.
+    file_to_inspection : The file to read and inspect for specific keywords.
+    src_path           : The directory containing `.c` files.
+    include_path       : The directory containing `.h` files.
+    devices_path       : The directory containing the functions associated with the blocks (e.g. inputGPIOblk).
+    src_dir            : The destination directory for `.c` files (where they will be copied).
+    include_dir        : The destination directory for `.h` files (where they will be copied).
 
     Returns:
     --------
-    - A list of filenames that are missing from the specified directory. 
-    - Returns an empty list if all files are present.
-
-    Example:
-    --------
-    Input:
-        path = "/path/to/directory"
-        required_files = ["file1.txt", "file2.txt", "file3.txt"]
-
-    Output:
-        If "file2.txt" does not exist, returns ["file2.txt"].
-        If all files exist, returns [].
+    -
 
     """
-  
-    missing_files = [file for file in required_files if not os.path.isfile(os.path.join(path, file))]
-    return missing_files
+    
+    try:
+        with open(file_to_inspection, 'r') as file:
+            content = file.read()
+
+            if 'inputGPIOblk' in content:
+                copy_file_if_exists(os.path.join(src_path, 'button.c'), src_dir)
+                copy_file_if_exists(os.path.join(include_path, 'button.h'), include_dir)
+                copy_file_if_exists(os.path.join(devices_path, 'inputGPIOblk.c'), src_dir)
+
+            if 'outputGPIOblk' in content:
+                copy_file_if_exists(os.path.join(src_path, 'led.c'), src_dir)
+                copy_file_if_exists(os.path.join(include_path, 'led.h'), include_dir)
+                copy_file_if_exists(os.path.join(devices_path, 'outputGPIOblk.c'), src_dir)
+
+    except FileNotFoundError:
+        print(f"The file {file_to_inspection} isn't found'")
+    except IOError as e:
+        print(f"I/O Error {e}")
+
+
+def copy_file_if_exists(path_file, dest_dir):
+
+    """ Copies a file to a destination directory if it exists.
+
+    This function checks if a specified file exists. If the file is found, 
+    it copies it to the provided destination directory.
+
+    Example Call:
+    -------------
+    copy_file_if_exists(path_file="path/to/file", dest_dir="path/to/destination")
+
+    Parameters:
+    -----------
+    path_file  : The path to the file to copy.
+    dest_dir   : The directory where the file should be copied if it exists..
+
+    Returns:
+    --------
+    -
+
+    """
+
+    if os.path.exists(path_file):
+        shutil.copy(path_file, dest_dir)
 
 
 def create_ccsproject_file(model):
 
-    """Creates a .ccsproject file in XML format for a given project.
+    """ Creates a .ccsproject file in XML format for a given project.
 
     This function generates a `.ccsproject` file within a project-specific directory.
     The file is created in XML format and includes basic project options. The function ensures that the 
     directory exists before writing the file.
 
-    Call:
-    -----
-    create_ccsproject_file(model)
+    Example Call:
+    -------------
+    create_ccsproject_file("exampleModel")
 
     Parameters:
     -----------
-    model : The name of the project for which the `.ccsproject` file is being created.
+    model      : The name of the project for which the `.ccsproject` file is being created.
 
-    Functionality:
-    --------------
-    - Writes the XML content into a `.ccsproject` file in the specified directory.
+    Returns:
+    --------
+    -
 
     Example:
     --------
@@ -389,41 +434,41 @@ def create_ccsproject_file(model):
         file.write(ccsproject_content)
 
 
-def create_project_file(model, c2000ware_path):
+def create_project_file(model, c2000_path):
 
-    """Creates a .project file in XML format for a given project.
+    """ Creates a .project file in XML format for a given project.
 
     This function generates a `.project` file in a project-specific directory.
     The file is formatted as XML and includes project settings.
 
-    Call:
-    -----
-    create_project_file(model, first_path, second_path)
+    Example Call:
+    -------------
+    create_project_file("exampleModel", "C:/ti/c2000/C2000Ware_4_01_00_00")
 
     Parameters:
     -----------
-    model : The name of the project for which the `.project` file is being created.
-    first_path : The path used for certain linked resources.
-    second_path : The path used for other linked resources.
+    model      : The name of the project for which the `.project` file is being created.
+    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
 
-    Functionality:
-    --------------
-    - Writes the XML content into a `.project` file in the specified directory.
+    Returns:
+    --------
+    -
 
     Example:
     --------
     Input:
         model = "exampleModel"
-        first_path = "/path/to/first"
-        second_path = "/path/to/second"
+        c2000_path = "C:/ti/c2000/C2000Ware_4_01_00_00""
 
     Output:
         Creates a file `./exampleModel_project/.project` with the specified XML content.
 
     """
-    first_path = c2000ware_path + '/device_support/f2837xd/headers/source'
-    second_path = c2000ware_path + '/device_support/f2837xd/common/source'
 
+    first_path = c2000_path + '/device_support/f2837xd/headers/source'
+    second_path = c2000_path + '/device_support/f2837xd/common/source'
+
+    # In windows it needs an extra '/' on a linux environment no
     if isInWSL:
          first_path = '/' + first_path
          second_path = '/' + second_path
@@ -530,34 +575,33 @@ def create_project_file(model, c2000ware_path):
 
 def create_cproject_file(model, ti_path, c2000_path, include):
 
-    """Creates a .cproject file in XML format for a given project.
+    """ Creates a .cproject file in XML format for a given project.
 
     This function generates a `.cproject` file in a project-specific directory.
     The file is created in XML format and includes detailed configuration settings. 
 
-    Call:
-    -----
-    create_cproject_file(model, first_path, second_path, third_path)
+    Example Call:
+    -------------
+    create_cproject_file("exampleModel", "C:/ti", "C:/ti/c2000/C2000Ware_4_01_00_00", "C:/Users/name/Desktop/untitled_gen/untitled_project/include")
 
     Parameters:
     -----------
-    model : The name of the project for which the `.cproject` file is being created.
-    first_path : The first include path to be added to the project configuration.
-    second_path : The second include path to be added to the project configuration.
-    third_path : The third include path to be added to the project configuration.
-    include: The include directory of the project
+    model      : The name of the project for which the `.cproject` file is being created.
+    ti_path    : The path where the ti folder is located.
+    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
+    include    : The include directory of the project.
 
-    Functionality:
-    --------------
-    - Writes the XML content to the `.cproject` file in the specified directory.
+    Returns:
+    --------
+    -
 
     Example:
     --------
     Input:
         model = "exampleModel"
-        first_path = "/path/to/first/include"
-        second_path = "/path/to/second/include"
-        third_path = "/path/to/third/include"
+        ti_path = "C:/ti"
+        c2000_path = "C:/ti/c2000/C2000Ware_4_01_00_00"
+        include = "C:/Users/name/Desktop/untitled_gen/untitled_project/include"
 
     Output:
         Creates a file `./exampleModel_project/.cproject` with the specified XML content.
@@ -574,11 +618,8 @@ def create_cproject_file(model, ti_path, c2000_path, include):
     first_headers_path = c2000_path + '/device_support/f2837xd/headers/include'
     second_headers_path = c2000_path + '/device_support/f2837xd/common/include'
     third_headers_path = ti_path + '/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'
-    
-    if isInWSL:
-        include_path = convert_path_for_windows(include_path)
 
-    # Build content of .cproject file
+    # Content of .cproject file
     cproject_content = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
     <?fileVersion 4.0.0?>
     <cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
@@ -702,190 +743,169 @@ def create_cproject_file(model, ti_path, c2000_path, include):
         file.write(cproject_content)
 
 
-def copy_files_based_on_content(destination_file, src_path, include_path, devices_path, src_dir, include_dir):
-
-    """
-    Checks if the content of a given file contains specific keywords and copies 
-    associated files to their respective destination directories.
-
-    Parameters:
-    -----------
-    destination_file : The path of the file to be read and analyzed for specific keywords.
-    src_path : The path to the source directory containing the .c files.
-    include_path : The path to the source directory containing the .h files.
-    devices_path : The path to the directory containing device-related source files.
-    src_dir : The destination directory where .c files should be copied.
-    include_dir : The destination directory where .h files should be copied.
-
-    Functionality:
-    --------------
-    - Reads the content of `destination_file` to check for the presence of the keywords 
-      'inputGPIOblk' and 'outputGPIOblk'.
-    - If 'inputGPIOblk' is found, copies 'button.c', 'button.h', and 'inputGPIOblk.c' 
-      to their respective destination directories if they exist.
-    - If 'outputGPIOblk' is found, copies 'led.c', 'led.h', and 'outputGPIOblk.c' 
-      to their respective destination directories if they exist.
-
-    Example:
-    --------
-    If `destination_file` contains the keyword 'inputGPIOblk', the function will:
-    - Check if 'button.c', 'button.h', and 'inputGPIOblk.c' exist in their respective paths.
-    - Copy the existing files to `src_dir` and `include_dir` as appropriate.
-
-    Raises:
-    -------
-    - Prints an error message if `destination_file` is not found or if an I/O error occurs.
-    """
-    
-    
-    try:
-        with open(destination_file, 'r') as file:
-            content = file.read()
-
-            if 'inputGPIOblk' in content:
-                copy_file_if_exists(os.path.join(src_path, 'button.c'), src_dir, 'button.c')
-                copy_file_if_exists(os.path.join(include_path, 'button.h'), include_dir, 'button.h')
-                copy_file_if_exists(os.path.join(devices_path, 'inputGPIOblk.c'), src_dir, 'inputGPIOblk.c')
-
-            if 'outputGPIOblk' in content:
-                copy_file_if_exists(os.path.join(src_path, 'led.c'), src_dir, 'led.c')
-                copy_file_if_exists(os.path.join(include_path, 'led.h'), include_dir, 'led.h')
-                copy_file_if_exists(os.path.join(devices_path, 'outputGPIOblk.c'), src_dir, 'outputGPIOblk.c')
-
-    except FileNotFoundError:
-        print(f"The file {destination_file} isn't found'")
-    except IOError as e:
-        print(f"I/O Error {e}")
-
-
-
-def copy_file_if_exists(src_file, dest_dir, file_name):
-    """
-    Copies a file to the destination directory if it exists.
-
-    Parameters:
-    -----------
-    src_file : The path to the source file that needs to be copied.
-    dest_dir : The path to the destination directory where the file should be copied.
-    file_name : The name of the file used in confirmation or error messages.
-
-    Functionality:
-    --------------
-    - If the file exists, it copies the file to `dest_dir` using `shutil.copy()`.
-
-    """
-
-    if os.path.exists(src_file):
-        shutil.copy(src_file, dest_dir)
-
-
-def delete_config_file():
-    if os.path.isfile(config_file):
-            os.remove(config_file)
-            messagebox.showinfo("Configuration", f"{config_file} has been deleted.")
-    
-
-
 def advise(title, message):
-    # Inizializza la finestra principale
+
+    """ Displays a modal window with a message and Yes/No buttons for user response.
+
+    This function creates a pop-up window with a specified title and message, 
+    allowing the user to respond by selecting either "Yes" or "No." The window 
+    includes scrollable text to view long messages, and disables the close button 
+    to ensure a response is provided.
+
+    Example Call:
+    -------------
+    user_response = advise("Warning", "Are you sure you want to proceed?")
+
+    Parameters:
+    -----------
+    title      : The title of the window and header of the message.
+    message    : The message text displayed within the window.
+
+    Returns:
+    --------
+    bool
+    - `True` if the user selects "Yes" 
+    - `False` if the user selects "No."
+
+    """
+
+    # Initialize the main window
     root = tk.Tk()
     root.title(title)
-    root.geometry("650x400")  # Dimensioni della finestra
+    root.geometry("650x400")
 
-    # Variabile di risposta per il ritorno
     response = tk.BooleanVar(value=False)
 
-    # Impedisce la chiusura tramite la croce
+    # Prevents closing by means of the cross
     root.protocol("WM_DELETE_WINDOW", lambda: None)
 
-    # Etichetta per il titolo
-    Label(root, text=title, font=("Helvetica", 16, "bold")).pack(pady=10)
-
-    # Frame per contenere il Text e le barre di scorrimento
+    tk.Label(root, text=title, font=("Helvetica", 16, "bold")).pack(pady=10)
     frame = tk.Frame(root)
     frame.pack(pady=10, padx=20, fill="both", expand=True)
-
-    # Creazione del widget Text senza wrapping automatico
     text_box = tk.Text(frame, wrap="none", width=70, height=15)
-    text_box.insert("1.0", message)  # Inserisce il messaggio
-    text_box.config(state="disabled")  # Impedisce la modifica del testo
+    text_box.insert("1.0", message)
 
-    # Creazione della barra di scorrimento verticale e orizzontale
+    # Prevents text editing
+    text_box.config(state="disabled")
+
+    # Creating vertical and horizontal scroll bar
     y_scroll = tk.Scrollbar(frame, orient="vertical", command=text_box.yview)
     x_scroll = tk.Scrollbar(frame, orient="horizontal", command=text_box.xview)
 
-    # Configura il Text per utilizzare le barre di scorrimento
+    # Configure Text to use scrollbars
     text_box.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
 
-    # Posiziona il Text e le barre di scorrimento nel frame
+    # Place the Text and scrollbars in the frame
     text_box.grid(row=0, column=0, sticky="nsew")
     y_scroll.grid(row=0, column=1, sticky="ns")
     x_scroll.grid(row=1, column=0, sticky="ew")
 
-    # Configura il layout del frame per espandere il Text
     frame.grid_rowconfigure(0, weight=1)
     frame.grid_columnconfigure(0, weight=1)
 
-    # Funzione per impostare la risposta e chiudere la finestra
+    # Function to set the response and close the window
     def set_response(value):
         response.set(value)
-        root.quit()  # Chiude il mainloop e la finestra principale
 
-    # Bottoni Si e No
-    Button(root, text="Yes", command=lambda: set_response(True)).pack(side="left", padx=20, pady=5, expand=True)
-    Button(root, text="No", command=lambda: set_response(False)).pack(side="right", padx=20, pady=5, expand=True)
+        # Stop the mainloop without closing the window
+        root.quit()
 
-    # Avvia il mainloop di Tkinter e attende la chiusura della finestra
+    tk.Button(root, text="Yes", command=lambda: set_response(True)).pack(side="left", padx=20, pady=5, expand=True)
+    tk.Button(root, text="No", command=lambda: set_response(False)).pack(side="right", padx=20, pady=5, expand=True)
+
+    # Start the main loop of the Tkinter application
     root.mainloop()
 
-    # Chiude la finestra principale
+    # Close the main window
     root.destroy()
 
-    # Ritorna la risposta
     return response.get()
 
-def update_paths(ti_path, c2000ware_path):
-    """Aggiorna i percorsi in base ai nuovi valori di `ti_path` e `c2000ware_path`."""
-    # Aggiorna i percorsi usando i nuovi valori di ti_path e c2000ware_path
+
+def update_paths(ti_path, c2000_path):
+
+    """ Updates paths based on the new values of `ti_path` and `c2000_path`.
+
+    This function creates a dictionary with updated paths using the provided
+    `ti_path` and `c2000_path` values. The paths are constructed for 
+    specific project files and directories, including linker, headers, and 
+    source files.
+
+    Example Call:
+    -------------
+    paths = update_paths("C:/ti","C:/ti/c2000/C2000Ware_4_01_00_00")
+
+    Parameters:
+    -----------
+    ti_path    : The path where the ti folder is located.
+    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
+
+    Returns:
+    --------
+    dict
+    - A dictionary containing updated paths.
+
+    """
+    
     paths_to_check = {
-        "linker_path1": os.path.join(c2000ware_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
-        "linker_path2": os.path.join(c2000ware_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
-        "first_headers_path": os.path.join(c2000ware_path, 'device_support/f2837xd/headers/include'),
-        "second_headers_path": os.path.join(c2000ware_path, 'device_support/f2837xd/common/include'),
+        "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
+        "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
+        "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
+        "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
         "third_headers_path": os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'),
-        "first_source_path": os.path.join(c2000ware_path, 'device_support/f2837xd/headers/source'),
-        "second_source_path": os.path.join(c2000ware_path, 'device_support/f2837xd/common/source')
+        "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
+        "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source')
     }
     return paths_to_check
 
 
-
-def check_path(ti_path, c2000Ware_path):
+def check_paths(ti_path, c2000_path):
     
-    # Converti i percorsi in formato WSL
+    """ Verifies and updates required paths and files for the project configuration.
+
+    This function checks if essential paths and files, based on `ti_path` and `c2000_path`,
+    are accessible. If the environment is WSL, paths are converted accordingly.
+    Missing paths or files trigger user prompts to either update paths or delete the
+    configuration file. The function loops until all paths and files are verified.
+
+    Example Call:
+    -------------
+    check_paths("C:/ti","C:/ti/c2000/C2000Ware_4_01_00_00")
+
+    Parameters:
+    -----------
+    ti_path    : The path where the ti folder is located.
+    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
+
+    Returns:
+    --------
+    -
+     
+    """
+
     if isInWSL:
         ti_path = convert_path_for_wsl(ti_path)
-        c2000Ware_path = convert_path_for_wsl(c2000Ware_path)
+        c2000_path = convert_path_for_wsl(c2000_path)
 
-    def update_paths(ti_path, c2000Ware_path):
+    def update_paths(ti_path, c2000_path):
         return {
-            "linker_path1": os.path.join(c2000Ware_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
-            "linker_path2": os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
-            "first_headers_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/include'),
-            "second_headers_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/common/include'),
+            "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
+            "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
+            "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
+            "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
             "third_headers_path": os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'),
-            "first_source_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/headers/source'),
-            "second_source_path": os.path.join(c2000Ware_path, 'device_support/f2837xd/common/source')
+            "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
+            "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source')
         }
 
-    paths_to_check = update_paths(ti_path, c2000Ware_path)
+    paths_to_check = update_paths(ti_path, c2000_path)
 
-    # Verifica i percorsi e file mancanti
+    # Check if the paths exist.
     while True:
-        # Controlla i percorsi mancanti
+        
         missing_paths = [f"{path_name}: {path}" for path_name, path in paths_to_check.items() if not os.path.exists(path)]
 
-        # Se ci sono percorsi mancanti, chiedi di aggiornarli o eliminare il file config.json
+        # If there are missing paths, ask to update them or delete the config.json file
         if missing_paths:
             missing_paths_str = "\n\n".join(missing_paths)
             response = advise(
@@ -895,20 +915,20 @@ def check_path(ti_path, c2000Ware_path):
             if response:
                 open_config_window()
 
-                # Ricarica i percorsi aggiornati dalla nuova configurazione
+                # Reload updated paths from new configuration
                 config = load_config()
                 ti_path_update = config.get('ti_path', '')
-                c2000ware_path_update = config.get('c2000ware_path', '')
+                c2000_path_update = config.get('c2000Ware_path', '')
 
                 if isInWSL:
                     ti_path_update = convert_path_for_wsl(ti_path_update)
-                    c2000ware_path_update = convert_path_for_wsl(c2000ware_path_update)
+                    c2000_path_update = convert_path_for_wsl(c2000_path_update)
 
-                # Aggiorna i percorsi da controllare con i nuovi valori
-                paths_to_check = update_paths(ti_path_update, c2000ware_path_update)
+                # Update the paths to check with the new values
+                paths_to_check = update_paths(ti_path_update, c2000_path_update)
             else:
                 delete_config_file()
-                return  # Esci dalla funzione se si sceglie di eliminare config.json
+                return
         else:
             file_name = 'F2837xD_GlobalVariableDefs.c'
             file_path = os.path.join(paths_to_check["first_source_path"], file_name)
@@ -916,14 +936,13 @@ def check_path(ti_path, c2000Ware_path):
             if not os.path.isfile(file_path):
                 missing_files.append(file_name)
 
-            # Controlla altri file richiesti
             required_files = [
                 'F2837xD_CpuTimers.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
                 'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
                 'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
             ]
 
-            # Aggiunge eventuali altri file mancanti alla lista
+            # Add any other missing files to the list
             missing_files += [
                 file for file in required_files
                 if not os.path.isfile(os.path.join(paths_to_check["second_source_path"], file))
@@ -933,15 +952,17 @@ def check_path(ti_path, c2000Ware_path):
                 missing_message = "The following files are missing:\n\n"
                 for file in missing_files:
                     if "GlobalVariable" in file:
-                        # Percorso specifico per F2837xD_GlobalVariableDefs.c
+
+                        # Specific path for F2837xD_GlobalVariableDefs.c
                         missing_message += f"{file} in {paths_to_check['first_source_path']}\n\n"
                     else:
-                        # Percorso per altri file in second_source_path
+
+                        # Path to other files in second_source_path
                         missing_message += f"{file} in {paths_to_check['second_source_path']}\n\n"
                 missing_message += "\n\n"
 
                 response = advise(
-                    "Missing Paths or Files",
+                    "Missing Files",
                     f"{missing_message}Do you want to delete the config.json file (Yes) or not (No)"
                 )
 
@@ -950,63 +971,69 @@ def check_path(ti_path, c2000Ware_path):
                     delete_config_file()
                     return 
                 else:
-                    return  # Esce dalla funzione
+                    return
             else:
-                # Tutti i percorsi e file richiesti sono presenti
                 messagebox.showinfo("Paths and Files Check", "All required paths and files are present.")
-
                 break
 
 
-
-
 def press_configure_button():
+
+    """ Handles the configuration setup process when the configure button is pressed.
+
+    This function initializes the environment check, opens the configuration window, 
+    and verifies paths by loading configuration settings. It ensures that WSL is detected 
+    if applicable and verifies required paths for `ti_path` and `c2000Ware_path`.
+
+    Example Call:
+    -------------
+    press_configure_button()
+
+
+    Parameters:
+    -----------
+    -
+
+    Returns:
+    --------
+    -
+
+    """
+
     check_wsl_environment()
     open_config_window()
 
     config = load_config()
     ti_path = config.get('ti_path', '')
-    c2000ware_path = config.get('c2000ware_path', '')
+    c2000Ware_path = config.get('c2000Ware_path', '')
 
-    check_path(ti_path, c2000ware_path)
+    check_paths(ti_path, c2000Ware_path)
 
-
-   
-    
-    
-
-    
 
 def create_project_structure(model):
-    check_wsl_environment()
+    
+    """ Creates a project structure based on the specified model name.
 
-    """
-    Main function to create a complete project structure for a specified model.
+    This function sets up the directory structure, configuration files, and main 
+    source file needed for a project. It verifies WSL paths if necessary, copies 
+    relevant files, and generates additional project files for a Code Composer 
+    Studio (CCS) project.
 
-    This function orchestrates the entire process of setting up the project directory, 
-    creating necessary subdirectories, generating source files, copying required files, 
-    and configuring project-specific settings. It also interacts with the user to handle 
-    cases where files or paths are missing, ensuring that the project can be generated 
-    successfully or informing the user if the process is aborted.
-
-    Functionality:
-    --------------
-    - Asks the user for the installation environment and loads configuration paths.
-    - Creates project directories (e.g., `src`, `include`, `targetConfigs`).
-    - Generates the main source file (`adc_soc_epwm_cpu01.c`) with necessary code.
-    - Checks for the presence of specific source files and copies them if found.
-    - Handles path conversions for WSL.
-    - Ensures required files are present in the configured paths; prompts the user to 
-      update paths if necessary.
-    - Calls helper functions to create `.project`, `.cproject`, and `.ccsproject` 
-      configuration files.
-    - Displays a final message confirming the successful creation of the project.
+    Example Call:
+    -------------
+    create_project_structure("my_model")
 
     Parameters:
     -----------
-    model : The name of the project for which the project structure is being created.
+    model : The name of project
+
+    Returns:
+    --------
+    -
 
     """
+
+    check_wsl_environment()
 
     # Define paths for config.json in the directory where {model}_gen will be created and inside {model}_gen
     parent_dir = os.path.dirname(os.path.abspath('.'))
@@ -1018,26 +1045,30 @@ def create_project_structure(model):
         os.makedirs(os.path.join(parent_dir, f'{model}_gen'), exist_ok=True)  # Ensure {model}_gen directory exists
         shutil.copy(config_path_outside_gen, config_path_inside_gen)  # Copy and overwrite if exists
     else:
+
+        # If config.json doesn't exists in the parent folder
         messagebox.showinfo("File Status", f"config.json not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
         return 
 
     config = load_config()
     ti_path = config.get('ti_path', '')
-    c2000ware_path = config.get('c2000ware_path', '')
+    c2000Ware_path = config.get('c2000Ware_path', '')
 
     if isInWSL:
+
+        # wsl path
         if ti_path.startswith("/mnt/c/"):
+
+            # Convert in a windows path
             ti_path = convert_path_for_windows(ti_path)
         else: 
             ti_path = ti_path.replace('\\', '/')
-        # wsl path
-        if c2000ware_path.startswith("/mnt/c/"):
-            # Convert in a windows path
-            c2000ware_path = convert_path_for_windows(c2000ware_path)
+        if c2000Ware_path.startswith("/mnt/c/"):
+            c2000Ware_path = convert_path_for_windows(c2000Ware_path)
         else:
-            c2000ware_path = c2000ware_path.replace('\\', '/')
+            c2000Ware_path = c2000Ware_path.replace('\\', '/')
 
-    pysimCoder_path = environ.get('PYSUPSICTRL')
+    pysimCoder_path = os.environ.get('PYSUPSICTRL')
     include_path = pysimCoder_path + '/CodeGen/Delfino/include'
     src_path = pysimCoder_path + '/CodeGen/Delfino/src'
     pyblock_path = pysimCoder_path + '/CodeGen/Common/include'
@@ -1128,7 +1159,7 @@ def create_project_structure(model):
         # Move {model}.c file in the src directory
         shutil.move(source_file, src_dir)
 
-    #Call the function to copy files based on content in {model}.c
+    # Call the function to copy files based on content in {model}.c
     copy_files_based_on_content(destination_file, src_path, include_path, devices_path, src_dir, include_dir)
 
     # Copy the pyblock.h file into the project's include directory
@@ -1144,16 +1175,17 @@ def create_project_structure(model):
                 shutil.copy(full_file_name, targetConfigs_dir)
 
    
-
     # Absolute path include directory
     include_dir_absolute_path = os.path.abspath(include_dir)
 
+    if isInWSL:
+        include_dir_absolute_path = convert_path_for_windows(include_dir_absolute_path)
+
+
     # create the .project, .cproject, .ccsproject files
     create_ccsproject_file(model)
-    create_project_file(model, c2000ware_path)
-    create_cproject_file(model, ti_path, c2000ware_path, include_dir_absolute_path)
+    create_project_file(model, c2000Ware_path)
+    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path)
 
     # Displays a message indicating that the project was created successfully
     messagebox.showinfo("Project Status", "Project successfully created")
-
-
