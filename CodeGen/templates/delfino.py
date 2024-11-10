@@ -4,7 +4,7 @@ import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
 import json
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 
 """ The following commands are provided:
 
@@ -190,7 +190,7 @@ def open_config_window():
     def select_directory(var):
 
         # Opens a dialog box that allows the user to select a directory
-        selected_path = tk.filedialog.askdirectory()
+        selected_path = filedialog.askdirectory()
 
         if selected_path:
             var.set(selected_path)
