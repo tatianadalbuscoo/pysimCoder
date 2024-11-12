@@ -126,7 +126,12 @@ class RTgenDlg(QDialog):
             module = load_module(script_path)
             if module:
                 if hasattr(module, 'press_configure_button'):
-                    module.press_configure_button() 
+                    try:
+                        module.press_configure_button()
+                    except AttributeError as e:
+                        print(f"AttributeError: {e}")
+                    except Exception as e:
+                        print(f"An error occurred while calling 'create_project_structure': {e}")
             else:
                 print("Failed to load the module.")
         else:

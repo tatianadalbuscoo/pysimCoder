@@ -56,6 +56,9 @@ def load_module(module_path):
         spec.loader.exec_module(module)
         return module
 
+    except FileNotFoundError:
+        print(f"Error: File {module_path} not found.")
+        return None
     except Exception as e:
         print(f"Error loading module {module_path}: {e}")
         return None
@@ -96,8 +99,13 @@ def genProjectStructure(model, template):
             # Check if the method 'create_project_structure' exists
 
             if hasattr(module, 'create_project_structure'):
-                module.create_project_structure(model)
-
+                try:
+                    module.create_project_structure(model)
+                except AttributeError as e:
+                    print(f"AttributeError: {e}")
+                except Exception as e:
+                    print(f"An error occurred while calling 'create_project_structure': {e}")
+                
         else:
             print("Failed to load the module.")
     else:
