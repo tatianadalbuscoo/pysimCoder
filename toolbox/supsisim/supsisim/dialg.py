@@ -2,7 +2,8 @@ import os
 from supsisim.qtvers import *
 
 from supsisim.const import path
-from supsisim.RCPgen import load_module
+from .RCPgen import load_module
+
 
 class IO_Dialog(QDialog):
     def __init__(self,parent=None):
