@@ -186,6 +186,8 @@ def open_config_window():
     ti_path = tk.StringVar(root, value=current_config.get('ti_path', ''))
     c2000_path = tk.StringVar(root, value=current_config.get('c2000Ware_path', ''))
 
+    root.protocol("WM_DELETE_WINDOW", lambda: None)
+
     # Function to open file dialog and set path in the corresponding entry field
     def select_directory(var):
 
