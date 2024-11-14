@@ -1,0 +1,1 @@
+print("The test.py module was loaded successfully")
