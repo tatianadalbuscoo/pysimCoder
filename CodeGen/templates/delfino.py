@@ -349,6 +349,11 @@ def copy_files_based_on_content(file_to_inspection, src_path, include_path, devi
                 copy_file_if_exists(os.path.join(include_path, 'epwm.h'), include_dir)
                 copy_file_if_exists(os.path.join(devices_path, 'epwmblk.c'), src_dir)
 
+            if 'adcblk' in content:
+                copy_file_if_exists(os.path.join(src_path, 'adc.c'), src_dir)
+                copy_file_if_exists(os.path.join(include_path, 'adc.h'), include_dir)
+                copy_file_if_exists(os.path.join(devices_path, 'adcblk.c'), src_dir)
+
     except FileNotFoundError:
         print(f"The file {file_to_inspection} isn't found'")
     except IOError as e:

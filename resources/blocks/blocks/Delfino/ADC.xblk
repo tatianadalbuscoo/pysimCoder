@@ -1,11 +1,11 @@
 {
   "lib": "Delfino",
   "name": "ADC",
-  "ip": 1,
+  "ip": 0,
   "op": 1,
   "stin": 0,
   "stout": 0,
   "icon": "AD",
-  "params": "adcblk|ADC:A|channel:1|SOC:1|Module:modulo",
-  "help": ""
+  "params": "adcblk|ADC:'A'|channel:0|SOC:0",
+  "help": "Parameters:\nADC: The ADC module as a string (\"A\", \"B\", \"C\", \"D\")\nchannel: Channel number (integer from 0 to 5).\nSOC: SOC number for ADC (e.g., 0, 1, etc.).\nExample: Configure ADC module \"A\", select channel 0, and use SOC 0 for conversion."
 }
