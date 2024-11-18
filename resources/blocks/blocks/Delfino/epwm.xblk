@@ -1,0 +1,11 @@
+{
+  "lib": "Delfino",
+  "name": "ePWM",
+  "ip": 0,
+  "op": 0,
+  "stin": 0,
+  "stout": 0,
+  "icon": "ePWM",
+  "params": "epwmblk|PWM:'out1a'|TBPRD:5000|Duty-cycle:50",
+  "help": "Parameters:\nPWM: Select the output of the PWM. (Possible values: out1a, out1b, out2a, out2b, out3a, out3b, out4a, out4b, out5a, out5b, out6a, out6b, out8a, out8b)\nThis refers to the various outputs available on the micro, for example out1a and out1b are the two channels of the ePWM1 module. \nTBPRD: Register used for pwm period. (formula: TBPRD = (Tpwm * 50MHz)/2\nDuty-cycle: The percentage of time the signal is high relative to the pwm period (e.g. 50%)\nExample: ePWM on output out1a with TBPRD = 5000 (Tpwm = 100 micro), and 50 % of duty-cycle"
+}
