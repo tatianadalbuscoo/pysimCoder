@@ -3,8 +3,10 @@ import sys
 import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
 import json
-import tkinter as tk
-from tkinter import messagebox, filedialog
+#import tkinter as tk
+#from tkinter import messagebox, filedialog
+from supsisim.qtvers import *
+
 
 """ The following commands are provided:
 
@@ -34,7 +36,7 @@ isInWSL = False
 config_file = 'config.json'
 
 # Main window in Tkinter
-root = None
+#root = None
 
 
 def check_wsl_environment():
@@ -95,28 +97,7 @@ def load_config():
 
 
 def save_config(ti_path, c2000Ware_path):
-    
-    """ Saves paths to the `config.json` file.
-
-    This function saves the specified paths to a JSON configuration file named `config.json`.
-    It writes the provided paths to the file, creating or overwriting the file if it already exists.
-    A message box is displayed to inform the user that the paths have been saved successfully.
-
-    Example Call:
-    -------------
-    save_config(ti_path="path/to/ti", c2000Ware_path="path/to/c2000ware")
-
-    Parameters:
-    -----------
-    ti_path        : The path for TI folder.
-    c2000Ware_path : The path for C2000Ware folder.
-
-    Returns:
-    --------
-    -
-
-    """
-    
+    """Saves paths to the `config.json` file."""
     # Dictionary to save in .json file
     config = {
         'ti_path': ti_path,
@@ -125,7 +106,10 @@ def save_config(ti_path, c2000Ware_path):
 
     with open(config_file, 'w') as file:
         json.dump(config, file)
-    messagebox.showinfo("Configuration Saved", "Paths saved successfully!")
+    
+    # Utilizza None come primo argomento per QMessageBox
+    QMessageBox.information(None, "Configuration Saved", "Paths saved successfully!")
+
 
 
 def delete_config_file():
@@ -152,75 +136,94 @@ def delete_config_file():
 
     if os.path.isfile(config_file):
             os.remove(config_file)
-            messagebox.showinfo("Configuration", f"{config_file} has been deleted.")
+            QMessageBox.information(None, "Configuration", f"{config_file} has been deleted.")
+
 
 
 def open_config_window():
+    app = QApplication.instance() or QApplication([])
+    config_window = ConfigWindow()
+    result = config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
+    return result == QDialog.Accepted  # True se salvato, False se annullato
 
-    """ Opens a Tkinter window for configuration to set and save file paths.
 
-    This function creates a graphical user interface (GUI) using Tkinter that allows
-    users to input or select various file paths and save them to a `config.json` file.
-    The window provides entry fields for paths and buttons to browse directories.
 
-    Example Call:
-    -------------
-    open_config_window()
+class ConfigWindow(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Configuration")
+        self.resize(800, 200)
 
-    Parameters
-    ----------
-    -
+        # Carica la configurazione esistente
+        config = load_config()
+        self.ti_path = config.get('ti_path', '')
+        self.c2000Ware_path = config.get('c2000Ware_path', '')
 
-    Returns
-    -------
-    -
+        self.init_ui()
 
-    """
+    def init_ui(self):
+        layout = QVBoxLayout()
 
-    global root
-    root = tk.Tk()
-    root.title("Configuration")
+        # Campo per il percorso TI
+        ti_layout = QHBoxLayout()
+        ti_label = QLabel("TI folder path:")
+        self.ti_input = QLineEdit(self.ti_path)
+        ti_browse = QPushButton("Browse")
+        ti_browse.clicked.connect(self.browse_ti_path)
+        ti_layout.addWidget(ti_label)
+        ti_layout.addWidget(self.ti_input)
+        ti_layout.addWidget(ti_browse)
 
-    # Load current config or set empty strings
-    current_config = load_config()
-    ti_path = tk.StringVar(root, value=current_config.get('ti_path', ''))
-    c2000_path = tk.StringVar(root, value=current_config.get('c2000Ware_path', ''))
+        # Campo per il percorso C2000Ware
+        c2000_layout = QHBoxLayout()
+        c2000_label = QLabel("C2000Ware_4_01_00_00 folder path:")
+        self.c2000_input = QLineEdit(self.c2000Ware_path)
+        c2000_browse = QPushButton("Browse")
+        c2000_browse.clicked.connect(self.browse_c2000_path)
+        c2000_layout.addWidget(c2000_label)
+        c2000_layout.addWidget(self.c2000_input)
+        c2000_layout.addWidget(c2000_browse)
 
-    root.protocol("WM_DELETE_WINDOW", lambda: None)
+        # Bottone per salvare
+        button_layout = QHBoxLayout()
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(self.save_and_close)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(self.cancel_and_close)
 
-    # Function to open file dialog and set path in the corresponding entry field
-    def select_directory(var):
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
 
-        # Opens a dialog box that allows the user to select a directory
-        selected_path = filedialog.askdirectory()
+        # Aggiunge tutto al layout
+        layout.addLayout(ti_layout)
+        layout.addLayout(c2000_layout)
+        layout.addLayout(button_layout)
 
-        if selected_path:
-            var.set(selected_path)
+        # Imposta il layout principale
+        self.setLayout(layout)
 
-    tk.Label(root, text="ti folder path:").grid(row=0, column=0, sticky='e')
-    entry_ti = tk.Entry(root, textvariable=ti_path, width=100)
-    entry_ti.grid(row=0, column=1, pady=5)
-    tk.Button(root, text="Browse", command=lambda: select_directory(ti_path)).grid(row=0, column=2)
+    def browse_ti_path(self):
+        path = QFileDialog.getExistingDirectory(self, "Select TI folder path")
+        if path:
+            self.ti_input.setText(path)
 
-    tk.Label(root, text="C2000Ware_4_01_00_00 folder path:").grid(row=1, column=0, sticky='e')
-    entry_c2000ware = tk.Entry(root, textvariable=c2000_path, width=100)
-    entry_c2000ware.grid(row=1, column=1, pady=5)
-    tk.Button(root, text="Browse", command=lambda: select_directory(c2000_path)).grid(row=1, column=2)
+    def browse_c2000_path(self):
+        path = QFileDialog.getExistingDirectory(self, "Select C2000Ware folder path")
+        if path:
+            self.c2000_input.setText(path)
 
-    # Save the inputs and close window
-    def save_and_close():
-        save_config(ti_path.get(), c2000_path.get())
+    def cancel_and_close(self):
+        self.reject()  # Chiude con stato "Rejected"
 
-        # Stop the mainloop without closing the window.
-        root.quit()
+    def save_and_close(self):
+        save_config(self.ti_input.text(), self.c2000_input.text())
+        self.accept()  # Chiude con stato "Accepted"
 
-    tk.Button(root, text="Save", command=save_and_close).grid(row=2, column=1, pady=10, sticky='e')
+    def closeEvent(self, event):
+        # Assicura che lo stato "Rejected" venga impostato se chiuso con la croce
+        self.reject()
 
-    # Start the main loop of the Tkinter application
-    root.mainloop()
 
-    # Close the main window
-    root.destroy()
 
 
 def convert_path_for_wsl(path):
@@ -755,83 +758,48 @@ def create_cproject_file(model, ti_path, c2000_path, include):
         file.write(cproject_content)
 
 
+
+
+
 def advise(title, message):
+    app = QApplication.instance() or QApplication([])
+    dialog = QDialog()
+    dialog.setWindowTitle(title)
+    dialog.resize(600, 400)
 
-    """ Displays a modal window with a message and Yes/No buttons for user response.
+    layout = QVBoxLayout()
 
-    This function creates a pop-up window with a specified title and message, 
-    allowing the user to respond by selecting either "Yes" or "No." The window 
-    includes scrollable text to view long messages, and disables the close button 
-    to ensure a response is provided.
+    label = QLabel(title)
+    label.setStyleSheet("font-weight: bold; font-size: 16px;")
+    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-    Example Call:
-    -------------
-    user_response = advise("Warning", "Are you sure you want to proceed?")
+    scroll_area = QScrollArea()
+    scroll_area.setWidgetResizable(True)
+    text_widget = QTextEdit()
+    text_widget.setPlainText(message)
+    text_widget.setReadOnly(True)
+    scroll_area.setWidget(text_widget)
 
-    Parameters:
-    -----------
-    title      : The title of the window and header of the message.
-    message    : The message text displayed within the window.
+    button_layout = QHBoxLayout()
+    yes_button = QPushButton("Yes")
+    no_button = QPushButton("No")
 
-    Returns:
-    --------
-    bool
-    - `True` if the user selects "Yes" 
-    - `False` if the user selects "No."
+    response = []
 
-    """
+    yes_button.clicked.connect(lambda: (response.append(True), dialog.accept()))
+    no_button.clicked.connect(lambda: (response.append(False), dialog.reject()))
 
-    # Initialize the main window
-    root = tk.Tk()
-    root.title(title)
-    root.geometry("650x400")
+    button_layout.addWidget(yes_button)
+    button_layout.addWidget(no_button)
 
-    response = tk.BooleanVar(value=False)
+    layout.addWidget(label)
+    layout.addWidget(scroll_area)
+    layout.addLayout(button_layout)
 
-    # Prevents closing by means of the cross
-    root.protocol("WM_DELETE_WINDOW", lambda: None)
+    dialog.setLayout(layout)
+    dialog.exec()
+    return response[0] if response else False
 
-    tk.Label(root, text=title, font=("Helvetica", 16, "bold")).pack(pady=10)
-    frame = tk.Frame(root)
-    frame.pack(pady=10, padx=20, fill="both", expand=True)
-    text_box = tk.Text(frame, wrap="none", width=70, height=15)
-    text_box.insert("1.0", message)
-
-    # Prevents text editing
-    text_box.config(state="disabled")
-
-    # Creating vertical and horizontal scroll bar
-    y_scroll = tk.Scrollbar(frame, orient="vertical", command=text_box.yview)
-    x_scroll = tk.Scrollbar(frame, orient="horizontal", command=text_box.xview)
-
-    # Configure Text to use scrollbars
-    text_box.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
-
-    # Place the Text and scrollbars in the frame
-    text_box.grid(row=0, column=0, sticky="nsew")
-    y_scroll.grid(row=0, column=1, sticky="ns")
-    x_scroll.grid(row=1, column=0, sticky="ew")
-
-    frame.grid_rowconfigure(0, weight=1)
-    frame.grid_columnconfigure(0, weight=1)
-
-    # Function to set the response and close the window
-    def set_response(value):
-        response.set(value)
-
-        # Stop the mainloop without closing the window
-        root.quit()
-
-    tk.Button(root, text="Yes", command=lambda: set_response(True)).pack(side="left", padx=20, pady=5, expand=True)
-    tk.Button(root, text="No", command=lambda: set_response(False)).pack(side="right", padx=20, pady=5, expand=True)
-
-    # Start the main loop of the Tkinter application
-    root.mainloop()
-
-    # Close the main window
-    root.destroy()
-
-    return response.get()
 
 
 def update_paths(ti_path, c2000_path):
@@ -985,41 +953,25 @@ def check_paths(ti_path, c2000_path):
                 else:
                     return
             else:
-                messagebox.showinfo("Paths and Files Check", "All required paths and files are present.")
+                QMessageBox.information(None, "Paths and Files Check", "All required paths and files are present.")
                 break
 
-
 def press_configure_button():
-
-    """ Handles the configuration setup process when the configure button is pressed.
-
-    This function initializes the environment check, opens the configuration window, 
-    and verifies paths by loading configuration settings. It ensures that WSL is detected 
-    if applicable and verifies required paths for `ti_path` and `c2000Ware_path`.
-
-    Example Call:
-    -------------
-    press_configure_button()
-
-
-    Parameters:
-    -----------
-    -
-
-    Returns:
-    --------
-    -
-
-    """
-
+    """Handles the configuration setup process when the configure button is pressed."""
     check_wsl_environment()
-    open_config_window()
+    app = QApplication.instance() or QApplication([])
 
+    # Apri la finestra di configurazione
+    if not open_config_window():
+        return
+
+    # Continua solo se la configurazione è stata salvata
     config = load_config()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
 
     check_paths(ti_path, c2000Ware_path)
+
 
 
 def create_project_structure(model):
@@ -1044,6 +996,8 @@ def create_project_structure(model):
     -
 
     """
+    # Assicurati che QApplication sia attiva
+    app = QApplication.instance() or QApplication([])
 
     check_wsl_environment()
 
@@ -1059,7 +1013,7 @@ def create_project_structure(model):
     else:
 
         # If config.json doesn't exists in the parent folder
-        messagebox.showinfo("File Status", f"config.json not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
+        QMessageBox.information(None, "File Status", f"config.json not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
         return 
 
     config = load_config()
@@ -1200,4 +1154,4 @@ def create_project_structure(model):
     create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path)
 
     # Displays a message indicating that the project was created successfully
-    messagebox.showinfo("Project Status", "Project successfully created")
+    QMessageBox.information(None, "Project Status", "Project successfully created")
