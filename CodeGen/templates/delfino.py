@@ -32,11 +32,79 @@ from supsisim.qtvers import *
 # Saved if it is a linux environment or wsl
 isInWSL = False
 
-# File name where to save the paths
-config_file = 'config.json'
 
-# Main window in Tkinter
-#root = None
+class ConfigFile:
+    """
+    Classe per rappresentare un file di configurazione generico.
+    """
+    def __init__(self, name, extension="json"):
+        """
+        Inizializza un file di configurazione con nome ed estensione.
+        """
+        self.name = name
+        self.extension = extension
+        self.path = f"{self.name}.{self.extension}"
+
+    def exists(self):
+        """
+        Verifica se il file di configurazione esiste.
+        """
+        return os.path.isfile(self.path)
+
+    def load(self):
+        """
+        Carica il contenuto del file di configurazione, se esiste.
+        """
+        if self.exists():
+            with open(self.path, "r") as file:
+                return json.load(file)
+        return {}
+
+    def save(self, data):
+        """
+        Salva i dati in formato JSON nel file di configurazione.
+        """
+        with open(self.path, "w") as file:
+            json.dump(data, file, indent=4)
+
+    def delete(self):
+        """
+        Elimina il file di configurazione, se esiste.
+        """
+        if self.exists():
+            os.remove(self.path)
+
+    def __str__(self):
+        """
+        Rappresentazione testuale del file di configurazione.
+        """
+        return f"ConfigFile(name={self.name}, path={self.path})"
+
+
+
+
+def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
+    config_data = {
+        "ti_path": ti_path,
+        "c2000Ware_path": c2000Ware_path,
+    }
+    config_file.save(config_data)
+    QMessageBox.information(None, "General configs Saved", "Paths saved successfully!")
+
+# to do: metodo per gestire il salvataggio del config file del progetto
+
+
+
+def open_config_window():
+    app = QApplication.instance() or QApplication([])
+    config_window = ConfigWindow()
+    result = config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
+    return result == QDialog.Accepted  # True se salvato, False se annullato
+
+
+
+# File name where to save the paths
+general_config = ConfigFile("general_config")
 
 
 def check_wsl_environment():
@@ -65,87 +133,6 @@ def check_wsl_environment():
     isInWSL = 'microsoft' in os.uname().release.lower()
 
 
-def load_config():
-
-    """ Loads paths from the config.json file if it exists.
-    
-    This function attempts to read and load data from a JSON configuration file
-    named `config.json`, which is specified by the global `config_file` variable.
-    If the file exists, its contents are parsed and returned as a dictionary.
-    If the file does not exist, an empty dictionary is returned.
-
-    Example Call:
-    -------------
-    config_data = load_config()
-    
-    Parameters
-    ----------
-    -
-
-    Returns:
-    --------
-    dict
-    - A dictionary containing the parsed configuration data if the file exists.
-    - An empty dictionary if the file does not exist.
-
-    """
-
-    if os.path.exists(config_file):
-        with open(config_file, 'r') as file:
-            return json.load(file)
-    return {}
-
-
-def save_config(ti_path, c2000Ware_path):
-    """Saves paths to the `config.json` file."""
-    # Dictionary to save in .json file
-    config = {
-        'ti_path': ti_path,
-        'c2000Ware_path': c2000Ware_path
-    }
-
-    with open(config_file, 'w') as file:
-        json.dump(config, file)
-    
-    # Utilizza None come primo argomento per QMessageBox
-    QMessageBox.information(None, "Configuration Saved", "Paths saved successfully!")
-
-
-
-def delete_config_file():
-    
-    """ Deletes the configuration file if it exists.
-
-    This function checks if the configuration file exists in the
-    current directory. If found, it deletes the file and shows a confirmation 
-    message to the user.
-
-    Example Call:
-    -------------
-    delete_config_file()
-
-    Parameters:
-    -----------
-    -
-
-    Returns:
-    --------
-    -
-
-    """
-
-    if os.path.isfile(config_file):
-            os.remove(config_file)
-            QMessageBox.information(None, "Configuration", f"{config_file} has been deleted.")
-
-
-
-def open_config_window():
-    app = QApplication.instance() or QApplication([])
-    config_window = ConfigWindow()
-    result = config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
-    return result == QDialog.Accepted  # True se salvato, False se annullato
-
 
 
 class ConfigWindow(QDialog):
@@ -155,7 +142,7 @@ class ConfigWindow(QDialog):
         self.resize(800, 200)
 
         # Carica la configurazione esistente
-        config = load_config()
+        config = general_config.load()
         self.ti_path = config.get('ti_path', '')
         self.c2000Ware_path = config.get('c2000Ware_path', '')
 
@@ -216,7 +203,7 @@ class ConfigWindow(QDialog):
         self.reject()  # Chiude con stato "Rejected"
 
     def save_and_close(self):
-        save_config(self.ti_input.text(), self.c2000_input.text())
+        save_general_config_file(general_config, self.ti_input.text(), self.c2000_input.text())
         self.accept()  # Chiude con stato "Accepted"
 
     def closeEvent(self, event):
@@ -890,13 +877,13 @@ def check_paths(ti_path, c2000_path):
             missing_paths_str = "\n\n".join(missing_paths)
             response = advise(
                 "The following paths are missing:",
-                f"{missing_paths_str}\n\nDo you want to change paths (Yes) or delete the config.json file (No)"
+                f"{missing_paths_str}\n\nDo you want to change paths (Yes) or delete the general_config file (No)"
             )
             if response:
                 open_config_window()
 
                 # Reload updated paths from new configuration
-                config = load_config()
+                config = general_config.load()
                 ti_path_update = config.get('ti_path', '')
                 c2000_path_update = config.get('c2000Ware_path', '')
 
@@ -907,7 +894,8 @@ def check_paths(ti_path, c2000_path):
                 # Update the paths to check with the new values
                 paths_to_check = update_paths(ti_path_update, c2000_path_update)
             else:
-                delete_config_file()
+                general_config.delete()
+                MessageBox.information(None, "Configuration", f"{general_config} has been deleted.")
                 return
         else:
             file_name = 'F2837xD_GlobalVariableDefs.c'
@@ -943,7 +931,7 @@ def check_paths(ti_path, c2000_path):
 
                 response = advise(
                     "Missing Files",
-                    f"{missing_message}Do you want to delete the config.json file (Yes) or not (No)"
+                    f"{missing_message}Do you want to delete the general_config file (Yes) or not (No)"
                 )
 
 
@@ -966,7 +954,7 @@ def press_configure_button():
         return
 
     # Continua solo se la configurazione è stata salvata
-    config = load_config()
+    config = general_config.load()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
 
@@ -1003,20 +991,16 @@ def create_project_structure(model):
 
     # Define paths for config.json in the directory where {model}_gen will be created and inside {model}_gen
     parent_dir = os.path.dirname(os.path.abspath('.'))
-    config_path_outside_gen = os.path.join(parent_dir, 'config.json')
-    config_path_inside_gen = os.path.join(parent_dir, f'{model}_gen', 'config.json')
+    config_path_outside_gen = os.path.join(parent_dir, 'general_config.json')
 
     # Check if config.json exists in the parent directory and copy it to {model}_gen, overwriting if needed
-    if os.path.isfile(config_path_outside_gen):
-        os.makedirs(os.path.join(parent_dir, f'{model}_gen'), exist_ok=True)  # Ensure {model}_gen directory exists
-        shutil.copy(config_path_outside_gen, config_path_inside_gen)  # Copy and overwrite if exists
-    else:
-
-        # If config.json doesn't exists in the parent folder
-        QMessageBox.information(None, "File Status", f"config.json not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
+    if not os.path.isfile(config_path_outside_gen):
+        QMessageBox.information(None, "File Status", f"general_config not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
         return 
+        #os.makedirs(os.path.join(parent_dir, f'{model}_gen'), exist_ok=True)  # Ensure {model}_gen directory exists
+        #shutil.copy(config_path_outside_gen, config_path_inside_gen)  # Copy and overwrite if exists
 
-    config = load_config()
+    config = general_config.load()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
 
