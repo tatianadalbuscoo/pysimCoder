@@ -45,6 +45,9 @@ class ConfigFile:
         self.extension = extension
         self.path = f"{self.name}.{self.extension}"
 
+    def get_name(self, with_extension=True):
+        return self.path if with_extension else self.name
+
     def exists(self):
         """
         Verifica se il file di configurazione esiste.
@@ -877,7 +880,7 @@ def check_paths(ti_path, c2000_path):
             missing_paths_str = "\n\n".join(missing_paths)
             response = advise(
                 "The following paths are missing:",
-                f"{missing_paths_str}\n\nDo you want to change paths (Yes) or delete the general_config file (No)"
+                f"{missing_paths_str}\n\nDo you want to change paths (Yes) or delete the {general_config.get_name()} file (No)"
             )
             if response:
                 open_config_window()
@@ -895,7 +898,7 @@ def check_paths(ti_path, c2000_path):
                 paths_to_check = update_paths(ti_path_update, c2000_path_update)
             else:
                 general_config.delete()
-                MessageBox.information(None, "Configuration", f"{general_config} has been deleted.")
+                QMessageBox.information(None, "Configuration", f"{general_config.get_name()} has been deleted.")
                 return
         else:
             file_name = 'F2837xD_GlobalVariableDefs.c'
@@ -931,7 +934,7 @@ def check_paths(ti_path, c2000_path):
 
                 response = advise(
                     "Missing Files",
-                    f"{missing_message}Do you want to delete the general_config file (Yes) or not (No)"
+                    f"{missing_message}Do you want to delete the {general_config.get_name()} file (Yes) or not (No)"
                 )
 
 
@@ -991,11 +994,11 @@ def create_project_structure(model):
 
     # Define paths for config.json in the directory where {model}_gen will be created and inside {model}_gen
     parent_dir = os.path.dirname(os.path.abspath('.'))
-    config_path_outside_gen = os.path.join(parent_dir, 'general_config.json')
+    config_path_outside_gen = os.path.join(parent_dir, general_config.path)
 
     # Check if config.json exists in the parent directory and copy it to {model}_gen, overwriting if needed
     if not os.path.isfile(config_path_outside_gen):
-        QMessageBox.information(None, "File Status", f"general_config not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
+        QMessageBox.information(None, "File Status", f"{general_config.get_name()} not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
         return 
         #os.makedirs(os.path.join(parent_dir, f'{model}_gen'), exist_ok=True)  # Ensure {model}_gen directory exists
         #shutil.copy(config_path_outside_gen, config_path_inside_gen)  # Copy and overwrite if exists
