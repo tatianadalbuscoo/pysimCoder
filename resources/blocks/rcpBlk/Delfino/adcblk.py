@@ -34,6 +34,5 @@ def adcblk(pout, adc, channel, SOC):
     if not isinstance(SOC, int) or SOC < 0:
         raise ValueError(f"SOC must be a non-negative integer; received {SOC}.")
 
-    # Create the RCPblk object
     blk = RCPblk('adcblk', [], pout, [0,0], 0, [], [channel, SOC], adc)
     return blk

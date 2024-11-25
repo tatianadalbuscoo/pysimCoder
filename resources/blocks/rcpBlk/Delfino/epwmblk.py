@@ -1,16 +1,16 @@
 from supsisim.RCPblk import RCPblk
 from numpy import size
 
-def epwmblk(pwm, TBPRD, duty_cycle):
+def epwmblk(duty_cycle, pwm, TBPRD):
 
     """
     Call:   epwmblk(pwm, TBPRD, duty_cycle)
 
     Parameters
     ----------
+        duty_cycle: The percentage of time the signal is high relative to the pwm period (input)
         pwm: Connected output port name as a string for the PWM signal (e.g., "out1a")
         TBPRD: Register used for pwm period. (formula: TBPRD = (Tpwm * 50MHz)/2
-        duty_cycle: The percentage of time the signal is high relative to the pwm period.
 
     Returns
     -------
@@ -31,8 +31,8 @@ def epwmblk(pwm, TBPRD, duty_cycle):
     if TBPRD <= 0:
         raise ValueError(f"Time Base Period (TBPRD) should be a positive number; received {TBPRD}.")
 
-    if not (0 <= duty_cycle <= 100):
-        raise ValueError(f"Duty cycle should be between 0 and 100; received {duty_cycle}.")
+    #if not (0 <= duty_cycle <= 100):
+        #raise ValueError(f"Duty cycle should be between 0 and 100; received {duty_cycle}.")
     
-    blk = RCPblk('epwmblk', [], [], [0,0], 0, [], [TBPRD, duty_cycle], pwm)
+    blk = RCPblk('epwmblk', duty_cycle, [], [0,0], 0, [], [TBPRD], pwm)
     return blk

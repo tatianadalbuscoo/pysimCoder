@@ -1002,7 +1002,9 @@ def create_project_structure(model):
         return 
         #os.makedirs(os.path.join(parent_dir, f'{model}_gen'), exist_ok=True)  # Ensure {model}_gen directory exists
         #shutil.copy(config_path_outside_gen, config_path_inside_gen)  # Copy and overwrite if exists
-
+    
+    # Load the configuration from the parent directory
+    general_config.path = config_path_outside_gen  # Update the path dynamically
     config = general_config.load()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')

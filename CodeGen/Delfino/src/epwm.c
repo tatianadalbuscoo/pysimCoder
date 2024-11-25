@@ -87,21 +87,55 @@ void ConfigureEPWMRegisters(volatile struct EPWM_REGS* EPwmRegs, int tbprd, int 
     EPwmRegs->TBCTL.bit.CLKDIV = TB_DIV1;           // No clock division
 }
 
-// Main function to configure a specific ePWM channel
-void ConfigureEPWM(const char* pwm_output, int tbprd, int duty_cycle) 
-{
-
-    // Invert duty cycle
-    duty_cycle = 100 - duty_cycle;
-
-    // Calculate CMPA value
+// Function to dynamically update the duty cycle
+void UpdateEPWMDutyCycle(const char* pwm_output, int tbprd, double duty_cycle){
+    
+    // Calculate CMPA
     int cmpa = (int)(((float)duty_cycle / 100) * tbprd);
 
+    volatile struct EPWM_REGS* EPwmRegs = NULL;
+    if (strcmp(pwm_output, "out1a") == 0 || strcmp(pwm_output, "out1b") == 0) {
+        EPwmRegs = &EPwm1Regs;
+    }
+    else if (strcmp(pwm_output, "out2a") == 0 || strcmp(pwm_output, "out2b") == 0) {
+        EPwmRegs = &EPwm2Regs;
+    }
+    else if (strcmp(pwm_output, "out3a") == 0 || strcmp(pwm_output, "out3b") == 0) {
+        EPwmRegs = &EPwm3Regs;
+    }
+    else if (strcmp(pwm_output, "out4a") == 0 || strcmp(pwm_output, "out4b") == 0) {
+        EPwmRegs = &EPwm4Regs;
+    }
+    else if (strcmp(pwm_output, "out5a") == 0 || strcmp(pwm_output, "out5b") == 0) {
+        EPwmRegs = &EPwm5Regs;
+    }
+    else if (strcmp(pwm_output, "out6a") == 0 || strcmp(pwm_output, "out6b") == 0) {
+        EPwmRegs = &EPwm6Regs;
+    }
+    else if (strcmp(pwm_output, "out8a") == 0 || strcmp(pwm_output, "out8b") == 0) {
+        EPwmRegs = &EPwm8Regs;
+    }
+    else {
+        return; // PWM output is invalid
+    }
+
+    // Update the duty-cycle
+    if (EPwmRegs) {
+        EPwmRegs->CMPA.bit.CMPA = cmpa;
+    }
+}
+
+// Main function to configure a specific ePWM channel
+void ConfigureEPWM(const char* pwm_output, int tbprd, int duty_cycle) {
+    
+    // Configure initial duty-cycle
+    UpdateEPWMDutyCycle(pwm_output, tbprd, duty_cycle);
+
+    // Map PWM output to ePWM module, GPIO number, and channel
     int epwm_number = 0;
     int gpio_number = 0;
     char channel = 0;
 
-    // Map PWM output to ePWM module, GPIO number, and channel
     if (strcmp(pwm_output, "out1a") == 0) { epwm_number = 1; gpio_number = 0; channel = 'A'; }
     else if (strcmp(pwm_output, "out1b") == 0) { epwm_number = 1; gpio_number = 1; channel = 'B'; }
     else if (strcmp(pwm_output, "out2a") == 0) { epwm_number = 2; gpio_number = 2; channel = 'A'; }
@@ -116,11 +150,8 @@ void ConfigureEPWM(const char* pwm_output, int tbprd, int duty_cycle)
     else if (strcmp(pwm_output, "out6b") == 0) { epwm_number = 6; gpio_number = 11; channel = 'B'; }
     else if (strcmp(pwm_output, "out8a") == 0) { epwm_number = 8; gpio_number = 14; channel = 'A'; }
     else if (strcmp(pwm_output, "out8b") == 0) { epwm_number = 8; gpio_number = 15; channel = 'B'; }
-    else 
-    {
-
-        // Invalid output
-        return;
+    else {
+        return; // Invalid output
     }
 
     // Enable ePWM clock
@@ -143,7 +174,7 @@ void ConfigureEPWM(const char* pwm_output, int tbprd, int duty_cycle)
 
     // Configure ePWM registers
     if (EPwmRegs) {
-        ConfigureEPWMRegisters(EPwmRegs, tbprd, cmpa);
+        ConfigureEPWMRegisters(EPwmRegs, tbprd, EPwmRegs->CMPA.bit.CMPA);
         if (channel == 'A') {
             EPwmRegs->AQCTLA.bit.CAU = AQ_SET;   // Set high on count up
             EPwmRegs->AQCTLA.bit.CAD = AQ_CLEAR; // Set low on count down
@@ -154,4 +185,3 @@ void ConfigureEPWM(const char* pwm_output, int tbprd, int duty_cycle)
         }
     }
 }
-
