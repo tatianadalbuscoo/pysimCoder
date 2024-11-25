@@ -10,7 +10,7 @@ The following class is provided:
 The following commands are provided:
 
   load_module    - Reads file source and loads it as a module
-  genProjectStructure - Call plugin if exists
+  run_plugin     - run plugin if exists
   genCode        - Create  C code from BlockDiagram
   genMake        - Generate the Makefile for the C code
   detBlkSeq      - Get the right block sequence for simulation and RT
@@ -46,14 +46,12 @@ def load_module(module_path):
     """
 
     try:
+
         # Extracts the module name from the path (removes the .py extension)
         module_name = os.path.basename(module_path).replace('.py', '')
         
         spec = importlib.util.spec_from_file_location(module_name, module_path)
         module = importlib.util.module_from_spec(spec)
-        
-        # Executes the module
-        spec.loader.exec_module(module)
         return module
 
     except FileNotFoundError:
@@ -63,19 +61,27 @@ def load_module(module_path):
         print(f"Error loading module {module_path}: {e}")
         return None
 
-def genProjectStructure(model, template):
+
+def run_plugin(model, template, function_name=None, function_args=None):
 
     """ 
-    Reads a file source, loads it as a module, and calls a method to generate a project structure.
+    Runs a plugin with the same name as the template (for example, run delfino.py if the template is delfino.tmf). 
+    If a function is specified with its arguments, runs the specified function.
+    If the function does not exist, the plugin is executed anyway. All statements outside the functions are executed.
+    If there is no .py script corresponding to the .tmf file, nothing is executed and nothing happens.
+
     
     Example Call:
     -------------
-    genProjectStructure('model_name', 'template_name.tmf')
+    run_plugin('model_name', 'template_name.tmf', 'create_project_structure', {'arg1': value1})
+    run_plugin('model_name', 'template_name.tmf')
     
     Parameters
     ----------
-    model    : The name of the model.
-    template : The template file (e.g., 'delfino.tmf') from which the corresponding Python script (e.g., 'delfino.py') is derived.
+    model        : The name of the model.
+    template     : The template file (e.g., 'delfino.tmf') from which the corresponding Python script (e.g., 'delfino.py') is derived.
+    function_name: (optional) The name of the function to execute in the loaded script. If None, the entire script will be executed.
+    function_args: dict or list, (optional) Arguments to pass to the specified function. If None, the function will be called without arguments.
     
     Returns
     -------
@@ -89,31 +95,48 @@ def genProjectStructure(model, template):
     base_name = os.path.splitext(template)[0]
     
     script_path = os.path.join(template_path, 'CodeGen', 'templates', base_name + '.py')
+
+    # If specific .py file exists
     if os.path.exists(script_path):
 
         # Loads the module
         module = load_module(script_path)
 
         if module:
+            try:
 
-            # Check if the method 'create_project_structure' exists
+                # Executes the module
+                spec = importlib.util.spec_from_file_location(module.__name__, script_path)
+                spec.loader.exec_module(module)
 
-            if hasattr(module, 'create_project_structure'):
-                try:
-                    module.create_project_structure(model)
-                except AttributeError as e:
-                    print(f"AttributeError: {e}")
-                except Exception as e:
-                    print(f"An error occurred while calling 'create_project_structure': {e}")
-                
+                if function_name:
+
+                    # Execute the specified function
+                    if hasattr(module, function_name):
+                        func = getattr(module, function_name)
+                        
+                        try:
+                            # Call the function based on function_args
+                            if function_args is None:
+                                func()  # No arguments passed
+                            elif isinstance(function_args, dict):
+                                func(**function_args)
+                            elif isinstance(function_args, list):
+                                func(*function_args)
+
+                        except AttributeError as e:
+                            print(f"AttributeError: The function '{function_name}' encountered an attribute issue: {e}")
+                        except TypeError as e:
+                            print(f"TypeError: The arguments provided to the function '{function_name}' are incorrect: {e}")
+                        except Exception as e:
+                            print(f"An unexpected error occurred while calling '{function_name}': {e}")
+            except Exception as e:
+                print(f"An error occurred while executing: {e}")
         else:
             print("Failed to load the module.")
-    else:
-        print(f"Script path {script_path} does not exist.")
- 
 
 
-def genCode(model, Tsamp, blocks, rkstep=10):
+def genCode(model, Tsamp, blocks, template, rkstep=10):
     """Generate C-Code
 
     Call: genCode(model, Tsamp, Blocks, rkstep)
@@ -129,6 +152,8 @@ def genCode(model, Tsamp, blocks, rkstep=10):
     -------
     -
     """
+
+    run_plugin(model, template, 'check_blocks', [model, blocks])
 
     maxNode = 0
     for blk in blocks:
@@ -412,7 +437,7 @@ def genMake(model, template, addObj=''):
     """
 
     # If exists a file with the same name of template run the plugin
-    genProjectStructure(model, template)
+    run_plugin(model, template, 'create_project_structure', [model])
 
     template_path = environ.get('PYSUPSICTRL')
     fname = template_path + '/CodeGen/templates/' + template

@@ -2,7 +2,7 @@ import os
 from supsisim.qtvers import *
 
 from supsisim.const import path
-from .RCPgen import load_module
+from .RCPgen import run_plugin
 
 
 class IO_Dialog(QDialog):
@@ -121,22 +121,10 @@ class RTgenDlg(QDialog):
                 self.btnConfigure.hide() 
 
     def configureScript(self):
-        script_name = self.template.text().replace('.tmf', '.py')
-        script_path = os.path.join(path + 'CodeGen/templates', script_name)
-        if os.path.isfile(script_path):
-            module = load_module(script_path)
-            if module:
-                if hasattr(module, 'press_configure_button'):
-                    try:
-                        module.press_configure_button()
-                    except AttributeError as e:
-                        print(f"AttributeError: {e}")
-                    except Exception as e:
-                        print(f"An error occurred while calling 'create_project_structure': {e}")
-            else:
-                print("Failed to load the module.")
-        else:
-            print(f"Script path {script_path} does not exist.")
+        template_name = self.template.text()
+
+        # If the function press_configure_button exists, it executes it, otherwise it executes the .py script
+        run_plugin(None, template_name , 'press_configure_button')
 
 
     def getObjs(self):

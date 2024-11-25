@@ -964,6 +964,24 @@ def press_configure_button():
     check_paths(ti_path, c2000Ware_path)
 
 
+def check_blocks(model, blocks):
+    """
+    Print the blocks associated with a given model.
+
+    Parameters
+    ----------
+    model : str The name of the model.
+    blocks : list A list of blocks associated with the model.
+
+    Returns
+    -------
+    None
+    """
+    print(f"Model: {model}")
+    print("Blocks:")
+    for block in blocks:
+        print(f" - {block}")
+
 
 def create_project_structure(model):
     
