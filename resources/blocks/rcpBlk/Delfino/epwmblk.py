@@ -4,7 +4,7 @@ from numpy import size
 def epwmblk(duty_cycle, pwm, TBPRD):
 
     """
-    Call:   epwmblk(pwm, TBPRD, duty_cycle)
+    Call:   epwmblk(duty_cycle, pwm, TBPRD)
 
     Parameters
     ----------
@@ -30,9 +30,6 @@ def epwmblk(duty_cycle, pwm, TBPRD):
     
     if TBPRD <= 0:
         raise ValueError(f"Time Base Period (TBPRD) should be a positive number; received {TBPRD}.")
-
-    #if not (0 <= duty_cycle <= 100):
-        #raise ValueError(f"Duty cycle should be between 0 and 100; received {duty_cycle}.")
     
     blk = RCPblk('epwmblk', duty_cycle, [], [0,0], 0, [], [TBPRD], pwm)
     return blk
