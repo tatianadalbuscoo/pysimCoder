@@ -139,21 +139,20 @@ def run_plugin(model, template, function_name=None, function_args=None):
 def genCode(model, Tsamp, blocks, template, rkstep=10):
     """Generate C-Code
 
-    Call: genCode(model, Tsamp, Blocks, rkstep)
+    Call: genCode(model, Tsamp, Blocks, template, rkstep)
 
     Parameters
     ----------
     model     : Model name
     Tsamp     : Sampling Time
     Blocks    : Block list
+    template  : Template makefile
     rkstep    : step division per sample time for fixed step solver
 
     Returns
     -------
     -
     """
-
-    run_plugin(model, template, 'check_blocks', [model, blocks])
 
     maxNode = 0
     for blk in blocks:
@@ -419,6 +418,11 @@ def genCode(model, Tsamp, blocks, template, rkstep=10):
     f.write("}\n\n")
     f.close()
 
+    # If the create_project_structure function exists, execute it.
+    # If the function does not exist, the .py script associated with the .tmf is executed.
+    # If there is no .py script associated with the .tmf nothing happens.
+    run_plugin(model, template, 'create_project_structure', [model, blocks])
+
 
 def genMake(model, template, addObj=''):
     """Generate the Makefile
@@ -435,9 +439,6 @@ def genMake(model, template, addObj=''):
     -------
     -
     """
-
-    # If exists a file with the same name of template run the plugin
-    run_plugin(model, template, 'create_project_structure', [model])
 
     template_path = environ.get('PYSUPSICTRL')
     fname = template_path + '/CodeGen/templates/' + template

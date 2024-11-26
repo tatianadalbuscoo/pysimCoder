@@ -294,63 +294,7 @@ def convert_path_for_windows(path):
     return path 
 
 
-def copy_files_based_on_content(file_to_inspection, src_path, include_path, devices_path, src_dir, include_dir):
-    
-    """ Copies specific files based on the content of a file to inspection.
 
-    This function reads the contents of a specified `file_to_inspection` and checks for 
-    the presence of specific keywords ('inputGPIOblk' and 'outputGPIOblk'). If a keyword 
-    is found, it copies corresponding files from various source paths to destination directories.
-
-    Example Call:
-    -------------
-    copy_files_based_on_content(file_to_inspection="path/to/destination", src_path="src/path", 
-                                include_path="include/path", devices_path="devices/path", 
-                                src_dir="src/dir", include_dir="include/dir")
-
-    Parameters:
-    -----------
-    file_to_inspection : The file to read and inspect for specific keywords.
-    src_path           : The directory containing `.c` files.
-    include_path       : The directory containing `.h` files.
-    devices_path       : The directory containing the functions associated with the blocks (e.g. inputGPIOblk).
-    src_dir            : The destination directory for `.c` files (where they will be copied).
-    include_dir        : The destination directory for `.h` files (where they will be copied).
-
-    Returns:
-    --------
-    -
-
-    """
-    
-    try:
-        with open(file_to_inspection, 'r') as file:
-            content = file.read()
-
-            if 'inputGPIOblk' in content:
-                copy_file_if_exists(os.path.join(src_path, 'button.c'), src_dir)
-                copy_file_if_exists(os.path.join(include_path, 'button.h'), include_dir)
-                copy_file_if_exists(os.path.join(devices_path, 'inputGPIOblk.c'), src_dir)
-
-            if 'outputGPIOblk' in content:
-                copy_file_if_exists(os.path.join(src_path, 'led.c'), src_dir)
-                copy_file_if_exists(os.path.join(include_path, 'led.h'), include_dir)
-                copy_file_if_exists(os.path.join(devices_path, 'outputGPIOblk.c'), src_dir)
-            
-            if 'epwmblk' in content:
-                copy_file_if_exists(os.path.join(src_path, 'epwm.c'), src_dir)
-                copy_file_if_exists(os.path.join(include_path, 'epwm.h'), include_dir)
-                copy_file_if_exists(os.path.join(devices_path, 'epwmblk.c'), src_dir)
-
-            if 'adcblk' in content:
-                copy_file_if_exists(os.path.join(src_path, 'adc.c'), src_dir)
-                copy_file_if_exists(os.path.join(include_path, 'adc.h'), include_dir)
-                copy_file_if_exists(os.path.join(devices_path, 'adcblk.c'), src_dir)
-
-    except FileNotFoundError:
-        print(f"The file {file_to_inspection} isn't found'")
-    except IOError as e:
-        print(f"I/O Error {e}")
 
 
 def copy_file_if_exists(path_file, dest_dir):
@@ -964,26 +908,108 @@ def press_configure_button():
     check_paths(ti_path, c2000Ware_path)
 
 
-def check_blocks(model, blocks):
+
+
+def copy_files_based_on_content(block_functions, src_path, include_path, devices_path, src_dir, include_dir):
     """
-    Print the blocks associated with a given model.
+    Copia i file richiesti basandosi sui tipi di blocco specificati.
 
     Parameters
     ----------
-    model : str The name of the model.
-    blocks : list A list of blocks associated with the model.
+    block_functions : set
+        Set delle funzioni dei blocchi (es. {'inputGPIOblk', 'outputGPIOblk'}).
+    src_path    : str
+        Directory sorgente per i file `.c`.
+    include_path: str
+        Directory sorgente per i file `.h`.
+    devices_path: str
+        Directory sorgente per i file specifici dei blocchi.
+    src_dir     : str
+        Directory di destinazione per i file `.c`.
+    include_dir : str
+        Directory di destinazione per i file `.h`.
 
     Returns
     -------
     None
     """
-    print(f"Model: {model}")
-    print("Blocks:")
+
+    file_map = {
+        'inputGPIOblk': {
+            'src': ['button.c'],
+            'include': ['button.h'],
+            'devices': ['inputGPIOblk.c']
+        },
+        'outputGPIOblk': {
+            'src': ['led.c'],
+            'include': ['led.h'],
+            'devices': ['outputGPIOblk.c']
+        },
+        'epwmblk': {
+            'src': ['epwm.c'],
+            'include': ['epwm.h'],
+            'devices': ['epwmblk.c']
+        },
+        'adcblk': {
+            'src': ['adc.c'],
+            'include': ['adc.h'],
+            'devices': ['adcblk.c']
+        }
+    }
+
+    for block_function in block_functions:
+        if block_function in file_map:
+            files = file_map[block_function]
+
+            # Copia i file .c
+            for file in files['src']:
+                copy_file_if_exists(os.path.join(src_path, file), src_dir)
+
+            # Copia i file .h
+            for file in files['include']:
+                copy_file_if_exists(os.path.join(include_path, file), include_dir)
+
+            # Copia i file device-specific
+            for file in files['devices']:
+                copy_file_if_exists(os.path.join(devices_path, file), src_dir)
+
+
+def check_blocks(blocks):
+    """
+    Analizza i blocchi e restituisce un set delle funzioni utilizzate.
+
+    Parameters
+    ----------
+    blocks : list
+        Lista di blocchi con attributi come 'fcn' e 'name'.
+
+    Returns
+    -------
+    set
+        Set delle funzioni dei blocchi.
+    """
+    block_functions = set()
+
     for block in blocks:
-        print(f" - {block}")
+        block_function = getattr(block, 'fcn', 'N/A')
+
+        if block_function != 'N/A':
+            block_functions.add(block_function)
+
+    return block_functions
 
 
-def create_project_structure(model):
+
+
+
+
+
+
+
+
+
+
+def create_project_structure(model, blocks):
     
     """ Creates a project structure based on the specified model name.
 
@@ -1005,6 +1031,9 @@ def create_project_structure(model):
     -
 
     """
+
+    functions_name = check_blocks(blocks)
+
     # Assicurati che QApplication sia attiva
     app = QApplication.instance() or QApplication([])
 
@@ -1133,7 +1162,7 @@ def create_project_structure(model):
         shutil.move(source_file, src_dir)
 
     # Call the function to copy files based on content in {model}.c
-    copy_files_based_on_content(destination_file, src_path, include_path, devices_path, src_dir, include_dir)
+    copy_files_based_on_content(functions_name, src_path, include_path, devices_path, src_dir, include_dir)
 
     # Copy the pyblock.h file into the project's include directory
     pyblock_file = os.path.join(pyblock_path, 'pyblock.h')

@@ -123,7 +123,9 @@ class RTgenDlg(QDialog):
     def configureScript(self):
         template_name = self.template.text()
 
-        # If the function press_configure_button exists, it executes it, otherwise it executes the .py script
+        # If the press_configure_button function exists, execute it.
+        # If the function does not exist, the .py script associated with the .tmf is executed.
+        # If there is no .py script associated with the .tmf the "configure" button is not shown, so nothing is executed.
         run_plugin(None, template_name , 'press_configure_button')
 
 
