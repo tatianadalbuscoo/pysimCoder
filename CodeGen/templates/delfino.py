@@ -84,6 +84,220 @@ class ConfigFile:
         return f"ConfigFile(name={self.name}, path={self.path})"
 
 
+class ProjectConfigWindow(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Project Configuration")
+        self.resize(800, 300)
+
+        self.init_ui()
+
+    def init_ui(self):
+        # Layout principale
+        layout = QVBoxLayout()
+
+        # Spiegazione delle modalità
+        explanation_label = QLabel(
+            "Mode 1: Each module works independently. A peripheral (Timer or PWM) provides the time base via interrupt.\n"
+            "Mode 2: A peripheral (Timer or PWM) triggers ADC conversion, and the ADC generates an interrupt when conversion is done.\n"
+        )
+        explanation_label.setWordWrap(True)
+        layout.addWidget(explanation_label)
+
+        # Menu a tendina per selezionare la modalità
+        mode_layout = QHBoxLayout()
+        mode_label = QLabel("Mode:")
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["-", "1", "2"])  # Aggiunge "-" come valore predefinito e le modalità 1 e 2
+        self.mode_combo.currentTextChanged.connect(self.on_mode_changed)
+
+        # Imposta il combobox per espandersi
+        self.mode_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_combo)
+        layout.addLayout(mode_layout)
+
+        # Layout per selezionare il tipo di periferica (PWM o Timer) per modalità 1
+        self.peripheral_layout = QHBoxLayout()
+        self.peripheral_label = QLabel("Interrupt Peripheral:")
+        self.peripheral_combo = QComboBox()
+        self.peripheral_combo.addItems(["-"])  # Solo "-" all'inizio
+        self.peripheral_combo.currentTextChanged.connect(self.on_peripheral_changed)
+        self.peripheral_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.peripheral_layout.addWidget(self.peripheral_label)
+        self.peripheral_layout.addWidget(self.peripheral_combo)
+
+        # Nasconde il layout della periferica all'inizio
+        self.peripheral_label.hide()
+        self.peripheral_combo.hide()
+        layout.addLayout(self.peripheral_layout)
+
+        # Menu a tendina per il Trigger ADC - visibile solo per modalità 2
+        self.trigger_adc_layout = QHBoxLayout()
+        self.trigger_adc_label = QLabel("Trigger ADC:")
+        self.trigger_adc_combo = QComboBox()
+        self.trigger_adc_combo.addItems(["-"])  # Solo "-" all'inizio
+        self.trigger_adc_combo.currentTextChanged.connect(self.on_trigger_adc_changed)
+        self.trigger_adc_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.trigger_adc_layout.addWidget(self.trigger_adc_label)
+        self.trigger_adc_layout.addWidget(self.trigger_adc_combo)
+
+        # Nasconde il layout del Trigger ADC all'inizio
+        self.trigger_adc_label.hide()
+        self.trigger_adc_combo.hide()
+        layout.addLayout(self.trigger_adc_layout)
+
+        # Campo per il periodo del timer - condiviso tra le modalità 1 e 2
+        self.timer_period_layout = QHBoxLayout()
+        self.timer_period_label = QLabel("Period Timer [ms]:")
+        self.timer_period_input = QLineEdit()
+        self.timer_period_input.setPlaceholderText("Enter timer period")
+        self.timer_period_layout.addWidget(self.timer_period_label)
+        self.timer_period_layout.addWidget(self.timer_period_input)
+
+        # Nasconde il layout del periodo del timer all'inizio
+        self.timer_period_label.hide()
+        self.timer_period_input.hide()
+        layout.addLayout(self.timer_period_layout)
+
+        # Spacer per spingere i pulsanti verso il basso
+        layout.addStretch()
+
+        # Layout per i bottoni
+        button_layout = QHBoxLayout()
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(self.save_and_close)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(self.cancel_and_close)
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+
+        # Aggiunge i bottoni al layout principale
+        layout.addLayout(button_layout)
+
+        # Imposta il layout principale
+        self.setLayout(layout)
+
+    def on_mode_changed(self, mode):
+        """
+        Mostra o nasconde i campi in base alla modalita scelta.
+        """
+        if mode == "-":
+            # Nasconde tutto se si torna a "-"
+            self.peripheral_label.hide()
+            self.peripheral_combo.hide()
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+            self.trigger_adc_label.hide()
+            self.trigger_adc_combo.hide()
+            return
+
+        if "-" in self.mode_combo.itemText(0):
+            # Rimuove l'opzione "-" dalla modalità dopo la prima selezione
+            self.mode_combo.removeItem(0)
+
+        if mode == "1":
+            # Mostra il menu periferica
+            self.peripheral_combo.clear()
+            self.peripheral_combo.addItems(["-", "PWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 1
+            self.peripheral_label.show()
+            self.peripheral_combo.show()
+
+            # Nasconde i campi specifici per modalità 2
+            self.trigger_adc_label.hide()
+            self.trigger_adc_combo.hide()
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+        elif mode == "2":
+            # Mostra il menu Trigger ADC
+            self.trigger_adc_combo.clear()
+            self.trigger_adc_combo.addItems(["-", "PWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 2
+            self.trigger_adc_label.show()
+            self.trigger_adc_combo.show()
+
+            # Nasconde inizialmente il Period Timer finché non viene selezionato Timer
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+
+            # Nasconde il menu periferica
+            self.peripheral_label.hide()
+            self.peripheral_combo.hide()
+
+    def on_peripheral_changed(self, peripheral):
+        """
+        Mostra o nasconde il campo per il periodo del timer in base alla periferica scelta (solo per modalita 1).
+        """
+        if peripheral == "-":
+            # Nasconde il periodo del timer se si torna a "-"
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+            return
+
+        if "-" in self.peripheral_combo.itemText(0):
+            # Rimuove l'opzione "-" dopo la prima selezione
+            self.peripheral_combo.removeItem(0)
+
+        if peripheral == "Timer":
+            self.timer_period_label.show()
+            self.timer_period_input.show()
+        else:
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+
+    def on_trigger_adc_changed(self, trigger):
+        """
+        Mostra o nasconde il campo per il periodo del timer in base al trigger ADC scelto (solo per modalita 2).
+        """
+        if trigger == "-":
+            # Nasconde il periodo del timer se si torna a "-"
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+            return
+
+        if "-" in self.trigger_adc_combo.itemText(0):
+            # Rimuove l'opzione "-" dopo la prima selezione
+            self.trigger_adc_combo.removeItem(0)
+
+        if trigger == "Timer":
+            self.timer_period_label.show()
+            self.timer_period_input.show()
+        else:
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+
+    def cancel_and_close(self):
+        self.reject()  # Chiude con stato "Rejected"
+
+    def save_and_close(self):
+        """
+        Salva la configurazione selezionata e stampa i risultati.
+        """
+        selected_mode = self.mode_combo.currentText()  # Ottiene la modalità selezionata
+        if selected_mode == "1":
+            selected_peripheral = self.peripheral_combo.currentText()
+            if selected_peripheral == "Timer":
+                timer_period = self.timer_period_input.text() or "Not provided"
+                print(f"Selected Mode: {selected_mode}, Peripheral: {selected_peripheral}, Timer Period: {timer_period}")
+            else:
+                print(f"Selected Mode: {selected_mode}, Peripheral: {selected_peripheral}")
+        elif selected_mode == "2":
+            selected_trigger = self.trigger_adc_combo.currentText()
+            if selected_trigger == "Timer":
+                timer_period = self.timer_period_input.text() or "Not provided"
+                print(f"Selected Mode: {selected_mode}, ADC Trigger: {selected_trigger}, Timer Period: {timer_period}")
+            else:
+                print(f"Selected Mode: {selected_mode}, ADC Trigger: {selected_trigger}")
+        self.accept()  # Chiude con stato "Accepted"
+
+
+
+
+
+
+
 
 
 def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
@@ -94,6 +308,8 @@ def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
     config_file.save(config_data)
     QMessageBox.information(None, "General configs Saved", "Paths saved successfully!")
 
+
+
 # to do: metodo per gestire il salvataggio del config file del progetto
 
 
@@ -102,6 +318,12 @@ def open_config_window():
     app = QApplication.instance() or QApplication([])
     config_window = ConfigWindow()
     result = config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
+    return result == QDialog.Accepted  # True se salvato, False se annullato
+
+def open_project_config_window():
+    app = QApplication.instance() or QApplication([])
+    project_config_window = ProjectConfigWindow()
+    result = project_config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
     return result == QDialog.Accepted  # True se salvato, False se annullato
 
 
@@ -1031,7 +1253,7 @@ def create_project_structure(model, blocks):
     -
 
     """
-
+    open_project_config_window()
     functions_name = check_blocks(blocks)
 
     # Assicurati che QApplication sia attiva
