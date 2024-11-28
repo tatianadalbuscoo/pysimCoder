@@ -1158,7 +1158,7 @@ def check_blocks(blocks):
     return block_functions
 
 
-def find_and_copy_c_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
+def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
     print(f"Function names to process: {function_names}")    
 
     found_files = {}
@@ -1351,7 +1351,12 @@ def create_project_structure(model, blocks):
         f.write("    IER |= M_INT1;\n")
         f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
         f.write("    EINT;\n")
-        f.write("    ERTM;\n")
+        f.write("    ERTM;\n\n")
+        f.write("    EALLOW;\n")
+        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
+        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
+        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
+        f.write("    EDIS;\n")
         f.write("}\n\n")
     
         # Funzioni helper
@@ -1382,7 +1387,7 @@ def create_project_structure(model, blocks):
 
     # Call the function to copy files based on content in {model}.c
     #copy_files_based_on_content(functions_name, src_path, include_path, devices_path, src_dir, include_dir)
-    find_and_copy_c_files(functions_name,  CodeGen_path, src_dir, include_dir)
+    find_and_copy_files(functions_name,  CodeGen_path, src_dir, include_dir)
 
     # Copia il file pyblock.h
     pyblock_file = os.path.join(pyblock_path, 'pyblock.h')
