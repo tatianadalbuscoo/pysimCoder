@@ -1132,69 +1132,6 @@ def press_configure_button():
 
 
 
-def copy_files_based_on_content(block_functions, src_path, include_path, devices_path, src_dir, include_dir):
-    """
-    Copia i file richiesti basandosi sui tipi di blocco specificati.
-
-    Parameters
-    ----------
-    block_functions : set
-        Set delle funzioni dei blocchi (es. {'inputGPIOblk', 'outputGPIOblk'}).
-    src_path    : str
-        Directory sorgente per i file `.c`.
-    include_path: str
-        Directory sorgente per i file `.h`.
-    devices_path: str
-        Directory sorgente per i file specifici dei blocchi.
-    src_dir     : str
-        Directory di destinazione per i file `.c`.
-    include_dir : str
-        Directory di destinazione per i file `.h`.
-
-    Returns
-    -------
-    None
-    """
-
-    file_map = {
-        'inputGPIOblk': {
-            'src': ['button.c'],
-            'include': ['button.h'],
-            'devices': ['inputGPIOblk.c']
-        },
-        'outputGPIOblk': {
-            'src': ['led.c'],
-            'include': ['led.h'],
-            'devices': ['outputGPIOblk.c']
-        },
-        'epwmblk': {
-            'src': ['epwm.c'],
-            'include': ['epwm.h'],
-            'devices': ['epwmblk.c']
-        },
-        'adcblk': {
-            'src': ['adc.c'],
-            'include': ['adc.h'],
-            'devices': ['adcblk.c']
-        }
-    }
-
-    for block_function in block_functions:
-        if block_function in file_map:
-            files = file_map[block_function]
-
-            # Copia i file .c
-            for file in files['src']:
-                copy_file_if_exists(os.path.join(src_path, file), src_dir)
-
-            # Copia i file .h
-            for file in files['include']:
-                copy_file_if_exists(os.path.join(include_path, file), include_dir)
-
-            # Copia i file device-specific
-            for file in files['devices']:
-                copy_file_if_exists(os.path.join(devices_path, file), src_dir)
-
 
 def check_blocks(blocks):
     """
@@ -1221,7 +1158,53 @@ def check_blocks(blocks):
     return block_functions
 
 
+def find_and_copy_c_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
+    print(f"Function names to process: {function_names}")    
 
+    found_files = {}
+
+    # Crea le directory di destinazione se non esistono
+    os.makedirs(dest_c_dir, exist_ok=True)
+    os.makedirs(dest_h_dir, exist_ok=True)
+
+    # Regole speciali per funzioni specifiche
+    special_cases = {
+        "adcblk": ["adcblk.c", "adc.c", "adc.h"],
+        "inputGPIOblk": ["inputGPIOblk.c", "button.c", "button.h"],
+        "outputGPIOblk": ["outputGPIOblk.c", "led.c", "led.h"],
+        "epwmblk": ["epwmblk.c", "epwm.c", "epwm.h"],
+        "step": ["input.c"],
+        "sinus": ["input.c"],
+        "squareSignal": ["input.c"],
+        "constant": ["input.c"],
+        "absV":["nonlinear.c"],
+        "lut":["nonlinear.c"],
+        "saturation":["nonlinear.c"],
+        "switcher":["switch.c"],
+        "trigo":["nonlinear.c"],
+        "print":["output.c"]
+    }
+
+    # Ciclo attraverso le funzioni
+    for function in function_names:
+        found_files[function] = {"c_file": None, "h_file": None}
+
+        # Determina i file da cercare (speciali o standard)
+        files_to_search = special_cases.get(function, [f"{function}.c"])
+
+        # Cerca e copia i file
+        for file_name in files_to_search:
+            dest_dir = dest_c_dir if file_name.endswith(".c") else dest_h_dir
+            for root, _, files in os.walk(CodeGen_path):
+                if file_name in files:
+                    source_path = os.path.join(root, file_name)
+                    dest_path = os.path.join(dest_dir, file_name)
+                    shutil.copy(source_path, dest_path)
+                    key = "c_file" if file_name.endswith(".c") else "h_file"
+                    found_files[function][key] = dest_path
+                    break  # Trova il file e interrompe la ricerca
+
+    return found_files
 
 
 
@@ -1293,6 +1276,7 @@ def create_project_structure(model, blocks):
             c2000Ware_path = c2000Ware_path.replace('\\', '/')
 
     pysimCoder_path = os.environ.get('PYSUPSICTRL')
+    CodeGen_path = pysimCoder_path + '/CodeGen'
     include_path = pysimCoder_path + '/CodeGen/Delfino/include'
     src_path = pysimCoder_path + '/CodeGen/Delfino/src'
     pyblock_path = pysimCoder_path + '/CodeGen/Common/include'
@@ -1313,61 +1297,74 @@ def create_project_structure(model, blocks):
     main_file = os.path.join(src_dir, "cpu_timers_cpu01.c")
 
     with open(main_file, 'w') as f:
-       f.write("//###########################################################################\n")
-       f.write("// FILE:   cpu_timers_cpu01.c\n")
-       f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
-       f.write("//###########################################################################\n")
-       f.write("// Abilita solo il timer 0\n\n")
-        
-       f.write("// Included Files\n")
-       f.write('#include "F28x_Project.h"\n')
+        f.write("//###########################################################################\n")
+        f.write("// FILE:   cpu_timers_cpu01.c\n")
+        f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
+        f.write("//###########################################################################\n\n")
+    
+        f.write('#include "F28x_Project.h"\n\n')  # Include principale per il progetto
+    
+        # Prototipi delle funzioni
+        f.write("__interrupt void cpu_timer0_isr(void);\n")
+        f.write("void setup(void);\n")
+        f.write("double get_run_time(void);\n")
+        f.write("double get_Tsamp(void);\n\n")
+    
+        # Variabili globali
+        f.write("static double Tsamp = 0.01;  // Intervallo temporale 10 ms\n")
+        f.write("static double T = 0.0;      // Tempo corrente\n\n")
+    
+        # Funzione main
+        f.write("void main(void)\n")
+        f.write("{\n")
+        f.write("    setup();\n")
+        f.write("    while (1) {}\n")
+        f.write(f"    {model}_end();\n")
+        f.write("}\n\n")
+    
+        # ISR del Timer0
+        f.write("__interrupt void cpu_timer0_isr(void)\n")
+        f.write("{\n")
+        f.write("    CpuTimer0.InterruptCount++;\n")
+        f.write("    T += Tsamp;\n")
+        f.write(f"    {model}_isr(T);\n")
+        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
+        f.write("}\n\n")
+    
+        # Configurazione iniziale
+        f.write("void setup(void)\n")
+        f.write("{\n")
+        f.write("    InitSysCtrl();\n")
+        f.write("    InitGpio();\n")
+        f.write(f"    {model}_init();\n\n")
+        f.write("    DINT;\n")
+        f.write("    InitPieCtrl();\n")
+        f.write("    IER = 0x0000;\n")
+        f.write("    IFR = 0x0000;\n")
+        f.write("    InitPieVectTable();\n\n")
+        f.write("    EALLOW;\n")
+        f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
+        f.write("    EDIS;\n\n")
+        f.write("    InitCpuTimers();\n")
+        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, 10000);\n")
+        f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
+        f.write("    IER |= M_INT1;\n")
+        f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
+        f.write("    EINT;\n")
+        f.write("    ERTM;\n")
+        f.write("}\n\n")
+    
+        # Funzioni helper
+        f.write("double get_run_time(void)\n")
+        f.write("{\n")
+        f.write("    return T;\n")
+        f.write("}\n\n")
+    
+        f.write("double get_Tsamp(void)\n")
+        f.write("{\n")
+        f.write("    return Tsamp;\n")
+        f.write("}\n")
 
-       f.write("// Function Prototypes\n")
-       f.write('__interrupt void cpu_timer0_isr(void);\n')
-       f.write('void setup(void);\n\n')
-
-       f.write("double time;\n\n")
-
-       f.write("void main(void)\n")
-       f.write("{\n")
-       f.write("    setup();\n")
-       f.write("    while(1) {}\n")
-       f.write(f"    {model}_end();  // Condizione per finire\n")
-       f.write("}\n\n")
-
-       f.write("__interrupt void cpu_timer0_isr(void)\n")
-       f.write("{\n")
-       f.write("    CpuTimer0.InterruptCount++;\n")
-       f.write(f"    {model}_isr(time);\n")
-       f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
-       f.write("}\n\n")
-
-       f.write("void setup(void)\n")
-       f.write("{\n")
-       f.write("    InitSysCtrl();\n")
-       f.write("    InitGpio();\n")
-       f.write(f"    {model}_init();  // Inizializza i blocchi generati da PySimCoder\n\n")
-
-       f.write("    DINT;\n")
-       f.write("    InitPieCtrl();\n")
-       f.write("    IER = 0x0000;\n")
-       f.write("    IFR = 0x0000;\n")
-       f.write("    InitPieVectTable();\n\n")
-
-       f.write("    EALLOW;\n")
-       f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
-       f.write("    EDIS;\n\n")
-
-       f.write("    InitCpuTimers();\n")
-       f.write("    ConfigCpuTimer(&CpuTimer0, 200, 100000);\n")
-       f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
-
-       f.write("    IER |= M_INT1;\n")
-       f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
-
-       f.write("    EINT;\n")
-       f.write("    ERTM;\n")
-       f.write("}\n")
 
 
 
@@ -1384,12 +1381,19 @@ def create_project_structure(model, blocks):
         shutil.move(source_file, src_dir)
 
     # Call the function to copy files based on content in {model}.c
-    copy_files_based_on_content(functions_name, src_path, include_path, devices_path, src_dir, include_dir)
+    #copy_files_based_on_content(functions_name, src_path, include_path, devices_path, src_dir, include_dir)
+    find_and_copy_c_files(functions_name,  CodeGen_path, src_dir, include_dir)
 
-    # Copy the pyblock.h file into the project's include directory
+    # Copia il file pyblock.h
     pyblock_file = os.path.join(pyblock_path, 'pyblock.h')
     if os.path.exists(pyblock_file):
         shutil.copy(pyblock_file, include_dir)
+
+    # Copia il file matop.h
+    #matop_file = os.path.join(pyblock_path, 'matop.h')
+    #if os.path.exists(matop_file):
+        #shutil.copy(matop_file, include_dir)
+
 
     # Copy contents of targetConfigs directory
     if os.path.exists(targetConfigs_path):
