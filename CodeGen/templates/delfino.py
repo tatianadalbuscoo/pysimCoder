@@ -226,6 +226,7 @@ class ProjectConfigWindow(QDialog):
         self.timer_period_label = QLabel("Period Timer [ms]:")
         self.timer_period_input = QLineEdit()
         self.timer_period_input.setPlaceholderText("Enter timer period")
+        self.timer_period_input.textChanged.connect(self.update_save_button_state)  # Aggiunge controllo dinamico
         self.timer_period_layout.addWidget(self.timer_period_label)
         self.timer_period_layout.addWidget(self.timer_period_input)
 
@@ -239,11 +240,12 @@ class ProjectConfigWindow(QDialog):
 
         # Layout per i bottoni
         button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")
-        save_button.clicked.connect(self.save_and_close)
+        self.save_button = QPushButton("Save")  # Cambiato per abilitare il controllo dinamico
+        self.save_button.setEnabled(False)  # Disabilitato inizialmente
+        self.save_button.clicked.connect(self.save_and_close)
         cancel_button = QPushButton("Cancel")
         cancel_button.clicked.connect(self.cancel_and_close)
-        button_layout.addWidget(save_button)
+        button_layout.addWidget(self.save_button)
         button_layout.addWidget(cancel_button)
 
         # Aggiunge i bottoni al layout principale
@@ -251,7 +253,6 @@ class ProjectConfigWindow(QDialog):
 
         # Imposta il layout principale
         self.setLayout(layout)
-
 
     def on_mode_changed(self, mode):
         """
@@ -298,6 +299,8 @@ class ProjectConfigWindow(QDialog):
             self.peripheral_label.hide()
             self.peripheral_combo.hide()
 
+        self.update_save_button_state()
+
     def on_peripheral_changed(self, peripheral):
         """
         Mostra o nasconde il campo per il periodo del timer in base alla periferica scelta (solo per modalita 1).
@@ -318,6 +321,8 @@ class ProjectConfigWindow(QDialog):
         else:
             self.timer_period_label.hide()
             self.timer_period_input.hide()
+
+        self.update_save_button_state()
 
     def on_trigger_adc_changed(self, trigger):
         """
@@ -340,9 +345,62 @@ class ProjectConfigWindow(QDialog):
             self.timer_period_label.hide()
             self.timer_period_input.hide()
 
-    def cancel_and_close(self):
-        self.reject()  # Chiude con stato "Rejected"
+        self.update_save_button_state()
 
+
+    def update_save_button_state(self):
+
+        #Abilita o disabilita il pulsante Save in base allo stato attuale dei campi.
+        #Condizioni per abilitare:
+        #- Modalità 1 + PWM
+        #- Modalità 1 + Timer + periodo valido (numero positivo)
+        #- Modalità 2 + PWM
+        #- Modalità 2 + Timer + periodo valido (numero positivo)
+
+        mode = self.mode_combo.currentText()
+        peripheral = self.peripheral_combo.currentText()
+        trigger_adc = self.trigger_adc_combo.currentText()
+        timer_period = self.timer_period_input.text()
+
+        # Modalità 1
+        if mode == "1":
+            if peripheral == "PWM":
+                self.save_button.setEnabled(True)
+                return
+            elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
+                self.save_button.setEnabled(True)
+                return
+        # Modalità 2
+        elif mode == "2":
+            if trigger_adc == "PWM":
+                self.save_button.setEnabled(True)
+                return
+            elif trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
+                self.save_button.setEnabled(True)
+                return
+
+        # Disabilita il pulsante se nessuna condizione è soddisfatta
+        self.save_button.setEnabled(False)
+
+
+
+    def cancel_and_close(self):
+        """
+        Cancella il progetto
+        """
+        
+        project_dir = f"./{self.model}_project"
+        if os.path.exists(project_dir):
+            shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto        
+
+        self.reject()
+
+    def closeEvent(self, event):
+        """
+        Esegue la stessa logica di `cancel_and_close` quando si preme la `X`.
+        """
+        self.cancel_and_close()
+        event.accept()  # Chiude la finestra
 
     def save_and_close(self):
         """
@@ -1404,8 +1462,23 @@ def create_project_structure(model, blocks):
     os.makedirs(include_dir, exist_ok=True)
     os.makedirs(targetConfigs_dir, exist_ok=True)
 
+    # Name of the file that will be moved (eg example.c)
+    source_file = f'{model}.c'
+    destination_file = os.path.join(src_dir, f'{model}.c')
+
+    # Check if {model}.c exists in the current directoy
+    if os.path.exists(source_file):
+        if os.path.exists(destination_file):
+            os.remove(destination_file)
+
+        # Move {model}.c file in the src directory
+        shutil.move(source_file, src_dir)
+
 
     config_data = open_project_config_window(model)
+    if not config_data:
+        QMessageBox.warning(None, "Project Cancelled", f"Project {model} was cancelled.")
+        return False  # Processo interrotto, configurazione annullata
     save_project_config_file(model, config_data)
 
 
@@ -1488,19 +1561,6 @@ def create_project_structure(model, blocks):
 
 
 
-
-    # Name of the file that will be moved (eg example.c)
-    source_file = f'{model}.c'
-    destination_file = os.path.join(src_dir, f'{model}.c')
-
-    # Check if {model}.c exists in the current directoy
-    if os.path.exists(source_file):
-        if os.path.exists(destination_file):
-            os.remove(destination_file)
-
-        # Move {model}.c file in the src directory
-        shutil.move(source_file, src_dir)
-
     # Call the function to copy files based on content in {model}.c
     #copy_files_based_on_content(functions_name, src_path, include_path, devices_path, src_dir, include_dir)
     find_and_copy_files(functions_name,  CodeGen_path, src_dir, include_dir)
@@ -1509,12 +1569,6 @@ def create_project_structure(model, blocks):
     pyblock_file = os.path.join(pyblock_path, 'pyblock.h')
     if os.path.exists(pyblock_file):
         shutil.copy(pyblock_file, include_dir)
-
-    # Copia il file matop.h
-    #matop_file = os.path.join(pyblock_path, 'matop.h')
-    #if os.path.exists(matop_file):
-        #shutil.copy(matop_file, include_dir)
-
 
     # Copy contents of targetConfigs directory
     if os.path.exists(targetConfigs_path):
