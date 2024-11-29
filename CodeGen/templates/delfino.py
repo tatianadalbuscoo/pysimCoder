@@ -85,12 +85,83 @@ class ConfigFile:
 
 
 class ProjectConfigWindow(QDialog):
-    def __init__(self):
+    def __init__(self, model):
         super().__init__()
-        self.setWindowTitle("Project Configuration")
+        self.setWindowTitle(f"Project Configuration: {model}")
         self.resize(800, 300)
+        self.model = model
 
+        # Percorso del file di configurazione
+        self.config_file_path = os.path.join(f"./{model}_project", f"{model}_configuration.json")
+
+        # Carica i dati del file di configurazione (se esiste)
+        self.config_data = self.load_config_file()
+
+        # Inizializza l'interfaccia
         self.init_ui()
+
+        # Imposta i valori iniziali nell'interfaccia
+        self.set_initial_values()
+
+    def load_config_file(self):
+        """
+        Carica il file di configurazione {model}_configuration.json se esiste.
+        """
+        if os.path.isfile(self.config_file_path):
+            with open(self.config_file_path, "r") as file:
+                return json.load(file)
+        return {}
+
+    def set_initial_values(self):
+        """
+        Imposta i valori iniziali dell'interfaccia basandosi sulla configurazione caricata.
+        """
+        mode = self.config_data.get("mode")
+        self.mode_combo.setCurrentText(mode if mode else "-")
+
+        # Mostra i campi coerenti con la modalità caricata
+        if mode == "1":  # Modalità 1
+            peripheral = self.config_data.get("peripheral", "-")
+            self.peripheral_combo.setCurrentText(peripheral)
+            self.peripheral_label.show()
+            self.peripheral_combo.show()
+
+            # Timer period è mostrato solo se Peripheral è Timer
+            if peripheral == "Timer":
+                timer_period = self.config_data.get("timer_period", "")
+                self.timer_period_input.setText(timer_period)
+                self.timer_period_label.show()
+                self.timer_period_input.show()
+            else:
+                self.timer_period_input.setText("")
+                self.timer_period_label.hide()
+                self.timer_period_input.hide()
+
+        elif mode == "2":  # Modalità 2
+            trigger_adc = self.config_data.get("trigger_adc", "-")
+            self.trigger_adc_combo.setCurrentText(trigger_adc)
+            self.trigger_adc_label.show()
+            self.trigger_adc_combo.show()
+
+            # Timer period è mostrato solo se Trigger ADC è Timer
+            if trigger_adc == "Timer":
+                timer_period = self.config_data.get("timer_period", "")
+                self.timer_period_input.setText(timer_period)
+                self.timer_period_label.show()
+                self.timer_period_input.show()
+            else:
+                self.timer_period_input.setText("")
+                self.timer_period_label.hide()
+                self.timer_period_input.hide()
+
+        else:  # Nessuna modalità selezionata
+            self.peripheral_label.hide()
+            self.peripheral_combo.hide()
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+            self.trigger_adc_label.hide()
+            self.trigger_adc_combo.hide()
+
 
     def init_ui(self):
         # Layout principale
@@ -180,6 +251,7 @@ class ProjectConfigWindow(QDialog):
 
         # Imposta il layout principale
         self.setLayout(layout)
+
 
     def on_mode_changed(self, mode):
         """
@@ -271,25 +343,37 @@ class ProjectConfigWindow(QDialog):
     def cancel_and_close(self):
         self.reject()  # Chiude con stato "Rejected"
 
+
     def save_and_close(self):
         """
-        Salva la configurazione selezionata e stampa i risultati.
+        Salva la configurazione selezionata in un file JSON.
         """
-        selected_mode = self.mode_combo.currentText()  # Ottiene la modalità selezionata
+        selected_mode = self.mode_combo.currentText()
+        selected_peripheral = None
+        selected_trigger_adc = None
+        timer_period = None
+
+        # Salva i campi solo se sono rilevanti per la modalità selezionata
         if selected_mode == "1":
             selected_peripheral = self.peripheral_combo.currentText()
             if selected_peripheral == "Timer":
-                timer_period = self.timer_period_input.text() or "Not provided"
-                print(f"Selected Mode: {selected_mode}, Peripheral: {selected_peripheral}, Timer Period: {timer_period}")
-            else:
-                print(f"Selected Mode: {selected_mode}, Peripheral: {selected_peripheral}")
+                timer_period = self.timer_period_input.text()
         elif selected_mode == "2":
-            selected_trigger = self.trigger_adc_combo.currentText()
-            if selected_trigger == "Timer":
-                timer_period = self.timer_period_input.text() or "Not provided"
-                print(f"Selected Mode: {selected_mode}, ADC Trigger: {selected_trigger}, Timer Period: {timer_period}")
-            else:
-                print(f"Selected Mode: {selected_mode}, ADC Trigger: {selected_trigger}")
+            selected_trigger_adc = self.trigger_adc_combo.currentText()
+            if selected_trigger_adc == "Timer":
+                timer_period = self.timer_period_input.text()
+
+        # Raccoglie i dati da salvare
+        config_data = {
+            "mode": selected_mode,
+            "peripheral": selected_peripheral,
+            "trigger_adc": selected_trigger_adc,
+            "timer_period": timer_period,
+        }
+
+        # Salva nel file di configurazione del progetto
+        save_project_config_file(self.model, config_data)
+
         self.accept()  # Chiude con stato "Accepted"
 
 
@@ -310,7 +394,21 @@ def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
 
 
 
-# to do: metodo per gestire il salvataggio del config file del progetto
+
+def save_project_config_file(model, config_data):
+
+    project_dir = f"./{model}_project"
+    config_file_path = os.path.join(project_dir, f"{model}_configuration.json")
+
+    # Utilizza la classe ConfigFile per gestire il file di configurazione
+    config_file = ConfigFile(name=f"{model}_configuration", extension="json")
+    config_file.path = config_file_path  # Imposta il percorso personalizzato
+
+    # Salva i dati nel file JSON
+    config_file.save(config_data)
+
+    #QMessageBox.information(None, "Project Config Saved", f"Configuration saved to {config_file_path}")
+
 
 
 
@@ -320,11 +418,22 @@ def open_config_window():
     result = config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
     return result == QDialog.Accepted  # True se salvato, False se annullato
 
-def open_project_config_window():
+def open_project_config_window(model):
     app = QApplication.instance() or QApplication([])
-    project_config_window = ProjectConfigWindow()
+    project_config_window = ProjectConfigWindow(model)
     result = project_config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
-    return result == QDialog.Accepted  # True se salvato, False se annullato
+
+    if result == QDialog.Accepted:
+        # Raccogli i dati della configurazione
+        config_data = {
+            "mode": project_config_window.mode_combo.currentText(),
+            "peripheral": project_config_window.peripheral_combo.currentText() if project_config_window.mode_combo.currentText() == "1" else None,
+            "trigger_adc": project_config_window.trigger_adc_combo.currentText() if project_config_window.mode_combo.currentText() == "2" else None,
+            "timer_period": project_config_window.timer_period_input.text() or None,
+        }
+        return config_data  # Restituisce i dati della configurazione
+
+    return None  # Restituisce None se annullato
 
 
 
@@ -1236,8 +1345,10 @@ def create_project_structure(model, blocks):
     -
 
     """
-    open_project_config_window()
+
     functions_name = check_blocks(blocks)
+
+
 
     # Assicurati che QApplication sia attiva
     app = QApplication.instance() or QApplication([])
@@ -1292,6 +1403,11 @@ def create_project_structure(model, blocks):
     os.makedirs(src_dir, exist_ok=True)
     os.makedirs(include_dir, exist_ok=True)
     os.makedirs(targetConfigs_dir, exist_ok=True)
+
+
+    config_data = open_project_config_window(model)
+    save_project_config_file(model, config_data)
+
 
     # Create the main file adc_soc_epwm_cpu01.c
     main_file = os.path.join(src_dir, "cpu_timers_cpu01.c")
