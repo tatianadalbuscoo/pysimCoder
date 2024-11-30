@@ -223,7 +223,7 @@ class ProjectConfigWindow(QDialog):
 
         # Campo per il periodo del timer - condiviso tra le modalità 1 e 2
         self.timer_period_layout = QHBoxLayout()
-        self.timer_period_label = QLabel("Period Timer [ms]:")
+        self.timer_period_label = QLabel("Period Timer [micro seconds]:")
         self.timer_period_input = QLineEdit()
         self.timer_period_input.setPlaceholderText("Enter timer period")
         self.timer_period_input.textChanged.connect(self.update_save_button_state)  # Aggiunge controllo dinamico
@@ -1404,7 +1404,7 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
 
     return found_files
 
-def dispatch_main_generation(state, path_main, model):
+def dispatch_main_generation(state, path_main, model, timer_period):
     
     """
     Dispatcher per generare il main.c in base allo stato.
@@ -1418,18 +1418,19 @@ def dispatch_main_generation(state, path_main, model):
     """
 
     if state == 1:
-        generate_main_mode1_timer(path_main, model)
+        generate_main_mode1_timer(path_main, model, timer_period)
     elif state == 2:
         generate_main_mode1_pwm(path_main, model)
     elif state == 3:
-        generate_main_mode2_timer(path_main, model)
+        generate_main_mode2_timer(path_main, model, timer_period)
     elif state == 4:
         generate_main_mode2_pwm(path_main, model)
     else:
         raise ValueError(f"Stato non valido: {state}")
 
  
-def generate_main_mode1_timer (path_main, model):
+def generate_main_mode1_timer(path_main, model, timer_period):
+    Tsamp = float(timer_period)/1000000
 
     with open(path_main, 'w') as f:
         f.write("//###########################################################################\n")
@@ -1446,7 +1447,7 @@ def generate_main_mode1_timer (path_main, model):
         f.write("double get_Tsamp(void);\n\n")
     
         # Variabili globali
-        f.write("static double Tsamp = 0.01;  // Intervallo temporale 10 ms\n")
+        f.write(f"static double Tsamp = {Tsamp};  // Intervallo temporale\n")
         f.write("static double T = 0.0;      // Tempo corrente\n\n")
     
         # Funzione main
@@ -1481,7 +1482,7 @@ def generate_main_mode1_timer (path_main, model):
         f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
         f.write("    EDIS;\n\n")
         f.write("    InitCpuTimers();\n")
-        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, 10000);\n")
+        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, {timer_period});\n")
         f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
         f.write("    IER |= M_INT1;\n")
         f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
@@ -1614,9 +1615,10 @@ def create_project_structure(model, blocks):
     # Ottieni lo stato dal metodo get_current_state
     config_window = ProjectConfigWindow(model)  # Assumendo che la finestra restituisca lo stato
     state = config_window.get_current_state()
+    timer_period = config_data.get("timer_period")
 
     main_file = os.path.join(src_dir, "main.c")
-    dispatch_main_generation(state, main_file, model)
+    dispatch_main_generation(state, main_file, model, timer_period)
 
 
     
