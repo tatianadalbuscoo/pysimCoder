@@ -169,8 +169,8 @@ class ProjectConfigWindow(QDialog):
 
         # Spiegazione delle modalità
         explanation_label = QLabel(
-            "Mode 1: Each module works independently. A peripheral (Timer or PWM) provides the time base via interrupt.\n"
-            "Mode 2: A peripheral (Timer or PWM) triggers ADC conversion, and the ADC generates an interrupt when conversion is done.\n"
+            "Mode 1: Each module works independently. A peripheral (Timer or ePWM) provides the time base via interrupt.\n"
+            "Mode 2: A peripheral (Timer or ePWM) triggers ADC conversion, and the ADC generates an interrupt when conversion is done.\n"
         )
         explanation_label.setWordWrap(True)
         layout.addWidget(explanation_label)
@@ -189,7 +189,7 @@ class ProjectConfigWindow(QDialog):
         mode_layout.addWidget(self.mode_combo)
         layout.addLayout(mode_layout)
 
-        # Layout per selezionare il tipo di periferica (PWM o Timer) per modalità 1
+        # Layout per selezionare il tipo di periferica (ePWM o Timer) per modalità 1
         self.peripheral_layout = QHBoxLayout()
         self.peripheral_label = QLabel("Interrupt Peripheral:")
         self.peripheral_combo = QComboBox()
@@ -275,7 +275,7 @@ class ProjectConfigWindow(QDialog):
         if mode == "1":
             # Mostra il menu periferica
             self.peripheral_combo.clear()
-            self.peripheral_combo.addItems(["-", "PWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 1
+            self.peripheral_combo.addItems(["-", "ePWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 1
             self.peripheral_label.show()
             self.peripheral_combo.show()
 
@@ -287,7 +287,7 @@ class ProjectConfigWindow(QDialog):
         elif mode == "2":
             # Mostra il menu Trigger ADC
             self.trigger_adc_combo.clear()
-            self.trigger_adc_combo.addItems(["-", "PWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 2
+            self.trigger_adc_combo.addItems(["-", "ePWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 2
             self.trigger_adc_label.show()
             self.trigger_adc_combo.show()
 
@@ -352,9 +352,9 @@ class ProjectConfigWindow(QDialog):
 
         #Abilita o disabilita il pulsante Save in base allo stato attuale dei campi.
         #Condizioni per abilitare:
-        #- Modalità 1 + PWM
+        #- Modalità 1 + ePWM
         #- Modalità 1 + Timer + periodo valido (numero positivo)
-        #- Modalità 2 + PWM
+        #- Modalità 2 + ePWM
         #- Modalità 2 + Timer + periodo valido (numero positivo)
 
         mode = self.mode_combo.currentText()
@@ -364,7 +364,7 @@ class ProjectConfigWindow(QDialog):
 
         # Modalità 1
         if mode == "1":
-            if peripheral == "PWM":
+            if peripheral == "ePWM":
                 self.save_button.setEnabled(True)
                 return
             elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
@@ -372,7 +372,7 @@ class ProjectConfigWindow(QDialog):
                 return
         # Modalità 2
         elif mode == "2":
-            if trigger_adc == "PWM":
+            if trigger_adc == "ePWM":
                 self.save_button.setEnabled(True)
                 return
             elif trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
@@ -387,9 +387,9 @@ class ProjectConfigWindow(QDialog):
         #Ritorna lo stato attuale in base ai campi selezionati.
         #Stati possibili:
         #- 1: Modalità 1 + Timer + periodo valido (numero positivo)
-        #- 2: Modalità 1 + PWM
+        #- 2: Modalità 1 + ePWM
         #- 3: Modalità 2 + Timer + periodo valido (numero positivo)
-        #- 4: Modalità 2 + PWM
+        #- 4: Modalità 2 + ePWM
         
         mode = self.mode_combo.currentText()
         peripheral = self.peripheral_combo.currentText()
@@ -398,14 +398,14 @@ class ProjectConfigWindow(QDialog):
 
         # Modalità 1
         if mode == "1":
-            if peripheral == "PWM":
+            if peripheral == "ePWM":
                 return 2
             elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 return 1
 
         # Modalità 2
         elif mode == "2":
-            if trigger_adc == "PWM":
+            if trigger_adc == "ePWM":
                 return 4
             elif trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 return 3
@@ -1331,7 +1331,7 @@ def press_configure_button():
 
 
 
-def check_blocks(blocks):
+def check_blocks_set(blocks):
     """
     Analizza i blocchi e restituisce un set delle funzioni utilizzate.
 
@@ -1352,6 +1352,32 @@ def check_blocks(blocks):
 
         if block_function != 'N/A':
             block_functions.add(block_function)
+
+    return block_functions
+
+
+def check_blocks_list(blocks):
+    """
+    Analizza i blocchi e restituisce una lista delle funzioni utilizzate,
+    mantenendo anche i duplicati.
+
+    Parameters
+    ----------
+    blocks : list
+        Lista di blocchi con attributi come 'fcn' e 'name'.
+
+    Returns
+    -------
+    list
+        Lista delle funzioni dei blocchi, inclusi eventuali duplicati.
+    """
+    block_functions = []
+
+    for block in blocks:
+        block_function = getattr(block, 'fcn', 'N/A')
+
+        if block_function != 'N/A':
+            block_functions.append(block_function)
 
     return block_functions
 
@@ -1420,11 +1446,11 @@ def dispatch_main_generation(state, path_main, model, timer_period):
     if state == 1:
         generate_main_mode1_timer(path_main, model, timer_period)
     elif state == 2:
-        generate_main_mode1_pwm(path_main, model)
+        generate_main_mode1_epwm(path_main, model)
     elif state == 3:
         generate_main_mode2_timer(path_main, model, timer_period)
     elif state == 4:
-        generate_main_mode2_pwm(path_main, model)
+        generate_main_mode2_epwm(path_main, model)
     else:
         raise ValueError(f"Stato non valido: {state}")
 
@@ -1448,7 +1474,7 @@ def generate_main_mode1_timer(path_main, model, timer_period):
     
         # Variabili globali
         f.write(f"static double Tsamp = {Tsamp};  // Intervallo temporale\n")
-        f.write("static double T = 0.0;      // Tempo corrente\n\n")
+        f.write("static double T = 0.0;         // Tempo corrente\n\n")
     
         # Funzione main
         f.write("void main(void)\n")
@@ -1508,8 +1534,20 @@ def generate_main_mode1_timer(path_main, model, timer_period):
 
 
 #TO DO ALTRI MAIN
-def generate_main_mode1_pwm(path_main, model):
+def generate_main_mode1_epwm(path_main, model):
     return
+
+
+def check_epwm_block(functions_present_schema):
+
+    epwm_count = functions_present_schema.count("epwmblk")
+
+    if epwm_count == 0:
+        return 1  # Errore: 'epwmblk' assente
+    elif epwm_count > 1:
+        return 2  # Errore: 'epwmblk' presente più di una volta
+    else:
+        return 3  # Successo: 'epwmblk' presente esattamente una volta
 
 
 def create_project_structure(model, blocks):
@@ -1535,7 +1573,8 @@ def create_project_structure(model, blocks):
 
     """
 
-    functions_name = check_blocks(blocks)
+    functions_name = check_blocks_set(blocks)
+    functions_present_schema = check_blocks_list(blocks)
 
 
 
@@ -1608,13 +1647,33 @@ def create_project_structure(model, blocks):
 
     config_data = open_project_config_window(model)
     if not config_data:
-        QMessageBox.warning(None, "Project Cancelled", f"Project {model} was cancelled.")
+        QMessageBox.warning(None, "Project Cancelled", f"Project {model} has been cancelled.")
         return False  # Processo interrotto, configurazione annullata
     save_project_config_file(model, config_data)
 
     # Ottieni lo stato dal metodo get_current_state
     config_window = ProjectConfigWindow(model)  # Assumendo che la finestra restituisca lo stato
     state = config_window.get_current_state()
+
+    if state == 2 or state == 4:
+        check_result = check_epwm_block(functions_present_schema)
+
+        if check_result == 1:
+            QMessageBox.warning(None, "Error", f"ePWM block is missing from the schema. At least one ePWM block is required. Project {model} has been cancelled.")
+            project_dir = f"./{model}_project"
+            if os.path.exists(project_dir):
+                shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto  
+            return  # Interrupt the process in case of error
+
+        elif check_result == 2:
+            print("Error: 'epwmblk' is present more than once in the schema. Only one ePWM block is allowed.")
+            QMessageBox.warning(None, "Error", f"ePWM block is present more than once in the schema. Only one ePWM block is allowed. Project {model} has been cancelled.")
+            project_dir = f"./{model}_project"
+            if os.path.exists(project_dir):
+                shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto  
+            return  # Interrupt the process in case of error
+   
+
     timer_period = config_data.get("timer_period")
 
     main_file = os.path.join(src_dir, "main.c")
