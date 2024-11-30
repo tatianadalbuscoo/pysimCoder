@@ -382,6 +382,37 @@ class ProjectConfigWindow(QDialog):
         # Disabilita il pulsante se nessuna condizione è soddisfatta
         self.save_button.setEnabled(False)
 
+    def get_current_state(self):
+        
+        #Ritorna lo stato attuale in base ai campi selezionati.
+        #Stati possibili:
+        #- 1: Modalità 1 + Timer + periodo valido (numero positivo)
+        #- 2: Modalità 1 + PWM
+        #- 3: Modalità 2 + Timer + periodo valido (numero positivo)
+        #- 4: Modalità 2 + PWM
+        
+        mode = self.mode_combo.currentText()
+        peripheral = self.peripheral_combo.currentText()
+        trigger_adc = self.trigger_adc_combo.currentText()
+        timer_period = self.timer_period_input.text()
+
+        # Modalità 1
+        if mode == "1":
+            if peripheral == "PWM":
+                return 2
+            elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
+                return 1
+
+        # Modalità 2
+        elif mode == "2":
+            if trigger_adc == "PWM":
+                return 4
+            elif trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
+                return 3
+
+        # Nessuno stato valido
+        return None
+
 
 
     def cancel_and_close(self):
@@ -1373,12 +1404,111 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
 
     return found_files
 
+def dispatch_main_generation(state, path_main, model):
+    
+    """
+    Dispatcher per generare il main.c in base allo stato.
+
+    Parameters:
+    -----------
+    state : int
+        Stato corrente della configurazione (1, 2, 3, 4).
+    path_main : str
+        Percorso completo del file main.c.
+    """
+
+    if state == 1:
+        generate_main_mode1_timer(path_main, model)
+    elif state == 2:
+        generate_main_mode1_pwm(path_main, model)
+    elif state == 3:
+        generate_main_mode2_timer(path_main, model)
+    elif state == 4:
+        generate_main_mode2_pwm(path_main, model)
+    else:
+        raise ValueError(f"Stato non valido: {state}")
+
+ 
+def generate_main_mode1_timer (path_main, model):
+
+    with open(path_main, 'w') as f:
+        f.write("//###########################################################################\n")
+        f.write("// FILE:   main.c\n")
+        f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
+        f.write("//###########################################################################\n\n")
+    
+        f.write('#include "F28x_Project.h"\n\n')  # Include principale per il progetto
+    
+        # Prototipi delle funzioni
+        f.write("__interrupt void cpu_timer0_isr(void);\n")
+        f.write("void setup(void);\n")
+        f.write("double get_run_time(void);\n")
+        f.write("double get_Tsamp(void);\n\n")
+    
+        # Variabili globali
+        f.write("static double Tsamp = 0.01;  // Intervallo temporale 10 ms\n")
+        f.write("static double T = 0.0;      // Tempo corrente\n\n")
+    
+        # Funzione main
+        f.write("void main(void)\n")
+        f.write("{\n")
+        f.write("    setup();\n")
+        f.write("    while (1) {}\n")
+        f.write(f"    {model}_end();\n")
+        f.write("}\n\n")
+    
+        # ISR del Timer0
+        f.write("__interrupt void cpu_timer0_isr(void)\n")
+        f.write("{\n")
+        f.write("    CpuTimer0.InterruptCount++;\n")
+        f.write("    T += Tsamp;\n")
+        f.write(f"    {model}_isr(T);\n")
+        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
+        f.write("}\n\n")
+    
+        # Configurazione iniziale
+        f.write("void setup(void)\n")
+        f.write("{\n")
+        f.write("    InitSysCtrl();\n")
+        f.write("    InitGpio();\n")
+        f.write(f"    {model}_init();\n\n")
+        f.write("    DINT;\n")
+        f.write("    InitPieCtrl();\n")
+        f.write("    IER = 0x0000;\n")
+        f.write("    IFR = 0x0000;\n")
+        f.write("    InitPieVectTable();\n\n")
+        f.write("    EALLOW;\n")
+        f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
+        f.write("    EDIS;\n\n")
+        f.write("    InitCpuTimers();\n")
+        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, 10000);\n")
+        f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
+        f.write("    IER |= M_INT1;\n")
+        f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
+        f.write("    EINT;\n")
+        f.write("    ERTM;\n\n")
+        f.write("    EALLOW;\n")
+        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
+        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
+        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
+        f.write("    EDIS;\n")
+        f.write("}\n\n")
+    
+        # Funzioni helper
+        f.write("double get_run_time(void)\n")
+        f.write("{\n")
+        f.write("    return T;\n")
+        f.write("}\n\n")
+    
+        f.write("double get_Tsamp(void)\n")
+        f.write("{\n")
+        f.write("    return Tsamp;\n")
+        f.write("}\n")
 
 
-
-
-
-
+#TO DO ALTRI MAIN
+def generate_main_mode1_pwm(path_main, model):
+    return
 
 
 def create_project_structure(model, blocks):
@@ -1481,83 +1611,17 @@ def create_project_structure(model, blocks):
         return False  # Processo interrotto, configurazione annullata
     save_project_config_file(model, config_data)
 
+    # Ottieni lo stato dal metodo get_current_state
+    config_window = ProjectConfigWindow(model)  # Assumendo che la finestra restituisca lo stato
+    state = config_window.get_current_state()
 
-    # Create the main file adc_soc_epwm_cpu01.c
-    main_file = os.path.join(src_dir, "cpu_timers_cpu01.c")
+    main_file = os.path.join(src_dir, "main.c")
+    dispatch_main_generation(state, main_file, model)
 
-    with open(main_file, 'w') as f:
-        f.write("//###########################################################################\n")
-        f.write("// FILE:   cpu_timers_cpu01.c\n")
-        f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
-        f.write("//###########################################################################\n\n")
+
     
-        f.write('#include "F28x_Project.h"\n\n')  # Include principale per il progetto
+
     
-        # Prototipi delle funzioni
-        f.write("__interrupt void cpu_timer0_isr(void);\n")
-        f.write("void setup(void);\n")
-        f.write("double get_run_time(void);\n")
-        f.write("double get_Tsamp(void);\n\n")
-    
-        # Variabili globali
-        f.write("static double Tsamp = 0.01;  // Intervallo temporale 10 ms\n")
-        f.write("static double T = 0.0;      // Tempo corrente\n\n")
-    
-        # Funzione main
-        f.write("void main(void)\n")
-        f.write("{\n")
-        f.write("    setup();\n")
-        f.write("    while (1) {}\n")
-        f.write(f"    {model}_end();\n")
-        f.write("}\n\n")
-    
-        # ISR del Timer0
-        f.write("__interrupt void cpu_timer0_isr(void)\n")
-        f.write("{\n")
-        f.write("    CpuTimer0.InterruptCount++;\n")
-        f.write("    T += Tsamp;\n")
-        f.write(f"    {model}_isr(T);\n")
-        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
-        f.write("}\n\n")
-    
-        # Configurazione iniziale
-        f.write("void setup(void)\n")
-        f.write("{\n")
-        f.write("    InitSysCtrl();\n")
-        f.write("    InitGpio();\n")
-        f.write(f"    {model}_init();\n\n")
-        f.write("    DINT;\n")
-        f.write("    InitPieCtrl();\n")
-        f.write("    IER = 0x0000;\n")
-        f.write("    IFR = 0x0000;\n")
-        f.write("    InitPieVectTable();\n\n")
-        f.write("    EALLOW;\n")
-        f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
-        f.write("    EDIS;\n\n")
-        f.write("    InitCpuTimers();\n")
-        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, 10000);\n")
-        f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
-        f.write("    IER |= M_INT1;\n")
-        f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
-        f.write("    EINT;\n")
-        f.write("    ERTM;\n\n")
-        f.write("    EALLOW;\n")
-        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
-        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
-        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
-        f.write("    EDIS;\n")
-        f.write("}\n\n")
-    
-        # Funzioni helper
-        f.write("double get_run_time(void)\n")
-        f.write("{\n")
-        f.write("    return T;\n")
-        f.write("}\n\n")
-    
-        f.write("double get_Tsamp(void)\n")
-        f.write("{\n")
-        f.write("    return Tsamp;\n")
-        f.write("}\n")
 
 
 
