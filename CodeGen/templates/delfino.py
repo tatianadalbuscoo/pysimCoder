@@ -1345,6 +1345,8 @@ def check_blocks_set(blocks):
     set
         Set delle funzioni dei blocchi.
     """
+    for block in blocks:
+        print(f" - {block}")
     block_functions = set()
 
     for block in blocks:
@@ -1430,8 +1432,7 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
 
     return found_files
 
-def dispatch_main_generation(state, path_main, model, timer_period):
-    
+def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_output):
     """
     Dispatcher per generare il main.c in base allo stato.
 
@@ -1442,11 +1443,10 @@ def dispatch_main_generation(state, path_main, model, timer_period):
     path_main : str
         Percorso completo del file main.c.
     """
-
     if state == 1:
         generate_main_mode1_timer(path_main, model, timer_period)
     elif state == 2:
-        generate_main_mode1_epwm(path_main, model)
+        generate_main_mode1_epwm(path_main, model, tbprd, pwm_output)
     elif state == 3:
         generate_main_mode2_timer(path_main, model, timer_period)
     elif state == 4:
@@ -1534,8 +1534,150 @@ def generate_main_mode1_timer(path_main, model, timer_period):
 
 
 #TO DO ALTRI MAIN
-def generate_main_mode1_epwm(path_main, model):
-    return
+def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
+    pwm_period = (2 * int(tbprd)) / 1e8  # Calcolo di pwm_period
+
+
+    # Controllo esplicito per ogni valore di pwm_output
+    if pwm_output == "out1a" or pwm_output == "out1b":
+        number_epwm = "epwm1"
+        number_epwm_capsLock = "EPWM1"
+        number_epwm_digit = 1
+        epwm_regs = "EPwm1Regs"
+
+    elif pwm_output == "out2a" or pwm_output == "out2b":
+        number_epwm = "epwm2"
+        number_epwm_capsLock = "EPWM2"
+        number_epwm_digit = 2
+        epwm_regs = "EPwm2Regs"
+
+    elif pwm_output == "out3a" or pwm_output == "out3b":
+        number_epwm = "epwm3"
+        number_epwm_capsLock = "EPWM3"
+        number_epwm_digit = 3
+        epwm_regs = "EPwm3Regs"    
+
+    elif pwm_output == "out4a" or pwm_output == "out4b":
+        number_epwm = "epwm4"
+        number_epwm_capsLock = "EPWM4"
+        number_epwm_digit = 4
+        epwm_regs = "EPwm4Regs"
+
+    elif pwm_output == "out5a" or pwm_output == "out5b":
+        number_epwm = "epwm5"
+        number_epwm_capsLock = "EPWM5"
+        number_epwm_digit = 5
+        epwm_regs = "EPwm5Regs"
+
+    elif pwm_output == "out6a" or pwm_output == "out6b":
+        number_epwm = "epwm6"
+        number_epwm_capsLock = "EPWM6"
+        number_epwm_digit = 6
+        epwm_regs = "EPwm6Regs"
+
+    elif pwm_output == "out7a" or pwm_output == "out7b":
+        number_epwm = "epwm7"
+        number_epwm_capsLock = "EPWM7"
+        number_epwm_digit = 7
+        epwm_regs = "EPwm7Regs"
+
+    elif pwm_output == "out8a" or pwm_output == "out8b":
+        number_epwm = "epwm8"
+        number_epwm_capsLock = "EPWM8"
+        number_epwm_digit = 8
+        epwm_regs = "EPwm8Regs"
+
+    elif pwm_output == "out9a" or pwm_output == "out9b":
+        number_epwm = "epwm9"
+        number_epwm_capsLock = "EPWM9"
+        number_epwm_digit = 9
+        epwm_regs = "EPwm9Regs"
+
+    elif pwm_output == "out10a" or pwm_output == "out10b":
+        number_epwm = "epwm10"
+        number_epwm_capsLock = "EPWM10"
+        number_epwm_digit = 10
+        epwm_regs = "EPwm10Regs"
+
+    elif pwm_output == "out11a" or pwm_output == "out11b":
+        number_epwm = "epwm11"
+        number_epwm_capsLock = "EPWM11"
+        number_epwm_digit = 11
+        epwm_regs = "EPwm11Regs"
+
+    elif pwm_output == "out12a" or pwm_output == "out12b":
+        number_epwm = "epwm12"
+        number_epwm_capsLock = "EPWM12"
+        number_epwm_digit = 12
+        epwm_regs = "EPwm12Regs"
+
+    with open(path_main, "w") as f:
+        f.write('#include "F28x_Project.h"\n\n')
+        f.write("__interrupt void epwm1_isr(void);\n")
+        f.write("void setup(void);\n")
+        f.write("double get_run_time(void);\n")
+        f.write("double get_Tsamp(void);\n\n")
+        f.write(f"static double Tsamp = {pwm_period}; // Intervallo temporale\n")
+        f.write("static double T = 0.0;         // Tempo corrente\n\n")
+        f.write("void main(void)\n")
+        f.write("{\n")
+        f.write("    setup();\n")
+        f.write("    while (1) {}\n")
+        f.write(f"    {model}_end();\n")
+        f.write("}\n\n")
+        f.write(f"__interrupt void {number_epwm}_isr(void)\n")
+        f.write("{\n")
+        f.write("    T += Tsamp;\n")
+        f.write(f"    {model}_isr(T);\n\n")
+        f.write("    // Clear the interrupt flag for ePWM\n")
+        f.write(f"    {epwm_regs}.ETCLR.bit.INT = 1;\n\n")
+        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;\n")
+        f.write("}\n\n")
+        f.write("void setup(void)\n")
+        f.write("{\n")
+        f.write("    InitSysCtrl();\n")
+        f.write("    InitGpio();\n")
+        f.write(f"    {model}_init();\n\n")
+        f.write("    DINT;\n")
+        f.write("    InitPieCtrl();\n")
+        f.write("    IER = 0x0000;\n")
+        f.write("    IFR = 0x0000;\n")
+        f.write("    InitPieVectTable();\n\n")
+        f.write("    // Link ISR to ePWM1 interrupt\n")
+        f.write("    EALLOW;\n")
+        f.write(f"    PieVectTable.{number_epwm_capsLock}_INT = &{number_epwm}_isr;\n")
+        f.write("    EDIS;\n\n")
+        f.write("    // Enable ePWM interrupt in PIE group 3\n")
+        f.write(f"    PieCtrlRegs.PIEIER3.bit.INTx{number_epwm_digit} = 1;\n\n")
+        f.write("    // Enable CPU interrupt group 3\n")
+        f.write("    IER |= M_INT3;\n\n")
+        f.write("    // Enable global interrupts and real-time interrupts\n")
+        f.write("    EINT;\n")
+        f.write("    ERTM;\n\n")
+        f.write("    // Interrupt Setup\n")
+        f.write("    // l'interrupt viene generato una volta per ogni ciclo completo del periodo.\n")
+        f.write(f"    {epwm_regs}.ETSEL.bit.INTSEL = ET_CTR_ZERO;    // Trigger interrupt a TBCTR = 0\n")
+        f.write(f"    {epwm_regs}.ETSEL.bit.INTEN = 1;               // Abilita l'interrupt\n")
+        f.write(f"    {epwm_regs}.ETPS.bit.INTPRD = ET_1ST;          // Genera interrupt ad ogni evento\n\n")
+        f.write("    EALLOW;\n")
+        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
+        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
+        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
+        f.write("    EDIS;\n")
+        f.write("}\n\n")
+        f.write("double get_run_time(void)\n")
+        f.write("{\n")
+        f.write("    return T;\n")
+        f.write("}\n\n")
+        f.write("double get_Tsamp(void)\n")
+        f.write("{\n")
+        f.write("    return Tsamp;\n")
+        f.write("}\n")
+
+
+
+
+
 
 
 def check_epwm_block(functions_present_schema):
@@ -1548,6 +1690,30 @@ def check_epwm_block(functions_present_schema):
         return 2  # Errore: 'epwmblk' presente più di una volta
     else:
         return 3  # Successo: 'epwmblk' presente esattamente una volta
+
+def extract_pwm_parameters(blocks, target_function):
+    """
+    Estrae i parametri Integer e String da un blocco con la funzione target.
+
+    Parameters
+    ----------
+    blocks : list
+        Lista di blocchi (oggetti RCPblk).
+    target_function : str
+        Nome della funzione da cercare.
+
+    Returns
+    -------
+    tuple
+        pwm_period e pwm_output se trovato, altrimenti (None, None).
+    """
+    for block in blocks:
+        if block.fcn == target_function:
+            pwm_period = block.intPar[0] if len(block.intPar) > 0 else None
+            pwm_output = block.str
+            return pwm_period, pwm_output
+    return None, None
+
 
 
 def create_project_structure(model, blocks):
@@ -1655,7 +1821,10 @@ def create_project_structure(model, blocks):
     config_window = ProjectConfigWindow(model)  # Assumendo che la finestra restituisca lo stato
     state = config_window.get_current_state()
 
-    if state == 2 or state == 4:
+    main_file = os.path.join(src_dir, "main.c")
+
+    # Controlla se c'è solo un blocchetto epwm'
+    if state == 2:
         check_result = check_epwm_block(functions_present_schema)
 
         if check_result == 1:
@@ -1672,12 +1841,15 @@ def create_project_structure(model, blocks):
             if os.path.exists(project_dir):
                 shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto  
             return  # Interrupt the process in case of error
+
+        tbprd, pwm_output = extract_pwm_parameters(blocks, 'epwmblk')
+        print(tbprd)
+        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output)
+
    
-
-    timer_period = config_data.get("timer_period")
-
-    main_file = os.path.join(src_dir, "main.c")
-    dispatch_main_generation(state, main_file, model, timer_period)
+    if state == 1:
+        timer_period = config_data.get("timer_period")
+        dispatch_main_generation(state, main_file, model, timer_period, None, None)
 
 
     

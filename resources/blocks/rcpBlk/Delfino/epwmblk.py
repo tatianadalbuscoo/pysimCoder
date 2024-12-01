@@ -17,7 +17,7 @@ def epwmblk(duty_cycle, pwm, TBPRD):
        blk: RCPblk
     """
 
-    valid_pwm_outputs = ["out1a", "out1b", "out2a", "out2b", "out3a", "out3b", "out4a", "out4b", "out5a", "out5b", "out6a", "out6b", "out8a", "out8b"]
+    valid_pwm_outputs = ["out1a", "out1b", "out2a", "out2b", "out3a", "out3b", "out4a", "out4b", "out5a", "out5b", "out6a", "out6b", "out7a", "out7b", "out8a", "out8b", "out9a", "out9b", "out10a", "out10b", "out11a", "out11b", "out12a", "out12b"]
     
     if not isinstance(pwm, str):
         raise ValueError(f"PWM parameter must be a string; received type {type(pwm).__name__}.")
