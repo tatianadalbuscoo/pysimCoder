@@ -1679,6 +1679,137 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         f.write("    return Tsamp;\n")
         f.write("}\n")
 
+
+# state 3
+def generate_main_mode2_timer(path_main, model, timer_period):
+    Tsamp = float(timer_period)/1000000
+
+    with open(path_main, 'w') as f:
+        f.write("//###########################################################################\n")
+        f.write("// FILE:   main.c\n")
+        f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
+        f.write("//###########################################################################\n\n")
+    
+        f.write('#include "F28x_Project.h"\n\n')  # Include principale per il progetto
+
+        # Function Prototypes
+        f.write("// Function Prototypes\n")
+        f.write("void setup(void);\n")
+        f.write("void ConfigureADC(void);\n")
+        f.write("__interrupt void adca1_isr(void);\n")
+        f.write("__interrupt void cpu_timer0_isr(void);\n")
+        f.write("double get_run_time(void);\n")
+        f.write("double get_Tsamp(void);\n\n")
+
+        # Defines
+        f.write("// Defines\n")
+        f.write("#define RESULTS_BUFFER_SIZE 256\n\n")
+
+        # Globals
+        f.write("// Globals\n")
+        f.write("Uint16 AdcaResults[RESULTS_BUFFER_SIZE];\n")
+        f.write("Uint16 resultsIndex = 0;\n")
+        f.write("volatile Uint16 bufferFull = 0;\n")
+        f.write(f"static double Tsamp = {Tsamp};  // Sample interval\n")
+        f.write("static double T = 0.0;       // Current time\n\n")
+
+        # Main function
+        f.write("void main(void)\n{\n")
+        f.write("    setup();\n")
+        f.write("    while (1)\n")
+        f.write("    {\n")
+        f.write("        if (bufferFull)\n")
+        f.write("        {\n")
+        f.write("            bufferFull = 0;\n")
+        f.write('            asm("   ESTOP0"); // Breakpoint\n')
+        f.write("        }\n")
+        f.write("    }\n")
+        f.write(f"    {model}_end(); // Clean-up from PySimCoder blocks\n")
+        f.write("}\n\n")
+
+        # Timer ISR
+        f.write("__interrupt void cpu_timer0_isr(void)\n{\n")
+        f.write("    CpuTimer0.InterruptCount++;\n")
+        f.write("    AdcaRegs.ADCSOCFRC1.bit.SOC0 = 1; // Force start ADC conversion on SOC0\n")
+        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1; // Acknowledge interrupt in PIE\n")
+        f.write("}\n\n")
+
+        # ADC ISR
+        f.write("int cnt;\n")
+        f.write("__interrupt void adca1_isr(void)\n{\n")
+        f.write("    cnt++;\n")
+        f.write("    AdcaResults[resultsIndex++] = AdcaResultRegs.ADCRESULT0;\n")
+        f.write("    if (resultsIndex >= RESULTS_BUFFER_SIZE)\n")
+        f.write("    {\n")
+        f.write("        resultsIndex = 0;\n")
+        f.write("        bufferFull = 1;\n")
+        f.write("    }\n")
+        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n")
+        f.write("    T += Tsamp;\n")
+        f.write(f"    {model}_isr(T);\n")
+        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
+        f.write("}\n\n")
+
+        # Setup Function
+        f.write("void setup(void)\n{\n")
+        f.write("    InitSysCtrl();\n")
+        f.write("    InitGpio();\n")
+        f.write(f"    {model}_init();\n\n")
+        f.write("    DINT;\n")
+        f.write("    InitPieCtrl();\n")
+        f.write("    IER = 0x0000;\n")
+        f.write("    IFR = 0x0000;\n")
+        f.write("    InitPieVectTable();\n\n")
+        f.write("    EALLOW;\n")
+        f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
+        f.write("    PieVectTable.ADCA1_INT = &adca1_isr;\n")
+        f.write("    EDIS;\n\n")
+        f.write("    ConfigureADC();\n\n")
+        f.write("    InitCpuTimers();\n")
+        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, {timer_period});\n")
+        f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
+        f.write("    IER |= M_INT1;\n")
+        f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n")
+        f.write("    PieCtrlRegs.PIEIER1.bit.INTx1 = 1;\n")
+        f.write("    EINT;\n")
+        f.write("    ERTM;\n\n")
+        f.write("    EALLOW;\n")
+        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
+        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
+        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
+        f.write("    EDIS;\n")
+        f.write("}\n\n")
+
+        # ADC Configuration
+        f.write("void ConfigureADC(void)\n{\n")
+        f.write("    EALLOW;\n")
+        f.write("    AdcaRegs.ADCCTL2.bit.PRESCALE = 6;\n")
+        f.write("    AdcSetMode(ADC_ADCA, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);\n")
+        f.write("    AdcaRegs.ADCCTL1.bit.INTPULSEPOS = 1;\n")
+        f.write("    AdcaRegs.ADCCTL1.bit.ADCPWDNZ = 1;\n")
+        f.write("    DELAY_US(1000);\n")
+        f.write("    AdcaRegs.ADCSOC0CTL.bit.CHSEL = 0;\n")
+        f.write("    AdcaRegs.ADCSOC0CTL.bit.ACQPS = 14;\n")
+        f.write("    AdcaRegs.ADCSOC0CTL.bit.TRIGSEL = 0;\n")
+        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = 0;\n")
+        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;\n")
+        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n")
+        f.write("    EDIS;\n")
+        f.write("}\n\n")
+
+        # Helper Functions
+        f.write("double get_run_time(void)\n")
+        f.write("{\n")
+        f.write("    return T;\n")
+        f.write("}\n\n")
+
+        f.write("double get_Tsamp(void)\n")
+        f.write("{\n")
+        f.write("    return Tsamp;\n")
+        f.write("}\n")
+
+
+
 # state 4
 def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
     pwm_period = (2 * int(tbprd)) / 1e8  # Calcolo di pwm_period
@@ -2129,13 +2260,20 @@ def create_project_structure(model, blocks):
                     shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto
                 return    
                 
-
-
         tbprd, pwm_output = extract_pwm_parameters(blocks, 'epwmblk')
         dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output)
+        
+    if state == 3:
+        adc_blocks = extract_adc_parameters(blocks, 'adcblk')
+        if (adc_blocks == None):
+            QMessageBox.warning(None, "Error", f"Module A, channel 0 is already busy managing synchronization. Project {model} has been cancelled.")
+            project_dir = f"./{model}_project"
+            if os.path.exists(project_dir):
+                shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto
+            return  
 
    
-    if state == 1:
+    if state == 1 or state == 3:
         timer_period = config_data.get("timer_period")
         dispatch_main_generation(state, main_file, model, timer_period, None, None)
 
