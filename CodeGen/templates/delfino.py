@@ -1,15 +1,13 @@
-import os
+ï»¿import os
 import sys
 import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
 import json
-#import tkinter as tk
-#from tkinter import messagebox, filedialog
 from supsisim.qtvers import *
 
 
 """ The following commands are provided:
-
+TO DO:
     - Create a valid project for CCS
         - This script works on linux environment and on wsl.
         - If you press Settings -> Settings -> Configure in the pysimCoder menu you can configure the paths of the working folders (ti and C2000Ware_4_01_00_00), creating a config.json file.
@@ -34,99 +32,131 @@ isInWSL = False
 
 
 class ConfigFile:
+
     """
-    Classe per rappresentare un file di configurazione generico.
+    Class to represent a generic configuration file.
     """
+
     def __init__(self, name, extension="json"):
+
         """
-        Inizializza un file di configurazione con nome ed estensione.
+        Initializes a configuration file with name and extension.
         """
+
         self.name = name
         self.extension = extension
         self.path = f"{self.name}.{self.extension}"
 
     def get_name(self, with_extension=True):
+
+        """
+        Returns file name with/without extension.
+        """
         return self.path if with_extension else self.name
 
     def exists(self):
+
         """
-        Verifica se il file di configurazione esiste.
+        Check if the configuration file exists.
         """
+
         return os.path.isfile(self.path)
 
     def load(self):
+
         """
-        Carica il contenuto del file di configurazione, se esiste.
+        Loads the contents of the configuration file, if it exists.
         """
+
         if self.exists():
             with open(self.path, "r") as file:
                 return json.load(file)
         return {}
 
     def save(self, data):
+
         """
-        Salva i dati in formato JSON nel file di configurazione.
+        Save the data in JSON format in the configuration file.
         """
+
         with open(self.path, "w") as file:
             json.dump(data, file, indent=4)
 
     def delete(self):
+
         """
-        Elimina il file di configurazione, se esiste.
+        Delete the configuration file, if it exists.
         """
+
         if self.exists():
             os.remove(self.path)
 
     def __str__(self):
+
         """
-        Rappresentazione testuale del file di configurazione.
+        Textual representation of the configuration file.
         """
+
         return f"ConfigFile(name={self.name}, path={self.path})"
 
 
 class ProjectConfigWindow(QDialog):
+    
+    """
+    This class represents a project configuration window. It provides a user interface to select modes, 
+    configure settings, and save them to a JSON configuration file.
+    """
+
     def __init__(self, model):
+        
+        """
+        Initializes the project configuration window, loading the configuration 
+        file and setting up the user interface.
+        """
+
         super().__init__()
         self.setWindowTitle(f"Project Configuration: {model}")
         self.resize(800, 300)
         self.model = model
 
-        # Percorso del file di configurazione
+        # Path to the configuration file
         self.config_file_path = os.path.join(f"./{model}_project", f"{model}_configuration.json")
 
-        # Carica i dati del file di configurazione (se esiste)
+        # Load configuration file data (if exists)
         self.config_data = self.load_config_file()
 
-        # Inizializza l'interfaccia
+        # Initialize the interface
         self.init_ui()
-
-        # Imposta i valori iniziali nell'interfaccia
         self.set_initial_values()
 
     def load_config_file(self):
+
         """
-        Carica il file di configurazione {model}_configuration.json se esiste.
+        Loads the {model}_configuration.json configuration file if it exists.
         """
+
         if os.path.isfile(self.config_file_path):
             with open(self.config_file_path, "r") as file:
                 return json.load(file)
         return {}
 
     def set_initial_values(self):
+
         """
-        Imposta i valori iniziali dell'interfaccia basandosi sulla configurazione caricata.
+        Sets the initial interface values â€‹â€‹based on the loaded configuration.
         """
+
         mode = self.config_data.get("mode")
         self.mode_combo.setCurrentText(mode if mode else "-")
 
-        # Mostra i campi coerenti con la modalità caricata
-        if mode == "1":  # Modalità 1
+        # Show fields consistent with the loaded mode
+        if mode == "1":
             peripheral = self.config_data.get("peripheral", "-")
             self.peripheral_combo.setCurrentText(peripheral)
             self.peripheral_label.show()
             self.peripheral_combo.show()
 
-            # Timer period è mostrato solo se Peripheral è Timer
+            # Timer period is only shown if Peripheral is Timer
             if peripheral == "Timer":
                 timer_period = self.config_data.get("timer_period", "")
                 self.timer_period_input.setText(timer_period)
@@ -137,13 +167,13 @@ class ProjectConfigWindow(QDialog):
                 self.timer_period_label.hide()
                 self.timer_period_input.hide()
 
-        elif mode == "2":  # Modalità 2
+        elif mode == "2":
             trigger_adc = self.config_data.get("trigger_adc", "-")
             self.trigger_adc_combo.setCurrentText(trigger_adc)
             self.trigger_adc_label.show()
             self.trigger_adc_combo.show()
 
-            # Timer period è mostrato solo se Trigger ADC è Timer
+            # Timer period is only shown if Trigger ADC is Timer
             if trigger_adc == "Timer":
                 timer_period = self.config_data.get("timer_period", "")
                 self.timer_period_input.setText(timer_period)
@@ -154,7 +184,7 @@ class ProjectConfigWindow(QDialog):
                 self.timer_period_label.hide()
                 self.timer_period_input.hide()
 
-        else:  # Nessuna modalità selezionata
+        else:  # No mode selected.
             self.peripheral_label.hide()
             self.peripheral_combo.hide()
             self.timer_period_label.hide()
@@ -164,10 +194,15 @@ class ProjectConfigWindow(QDialog):
 
 
     def init_ui(self):
-        # Layout principale
+
+        """
+        Sets up the user interface components and layout for the configuration window.
+        """
+
+        # Main layout
         layout = QVBoxLayout()
 
-        # Spiegazione delle modalità
+        # Explanation of the modes
         explanation_label = QLabel(
             "Mode 1: Each module works independently. A peripheral (Timer or ePWM) provides the time base via interrupt.\n"
             "Mode 2: A peripheral (Timer or ePWM) triggers ADC conversion, and the ADC generates an interrupt when conversion is done.\n"
@@ -175,91 +210,88 @@ class ProjectConfigWindow(QDialog):
         explanation_label.setWordWrap(True)
         layout.addWidget(explanation_label)
 
-        # Menu a tendina per selezionare la modalità
+        # Drop-down menu to select the mode
         mode_layout = QHBoxLayout()
         mode_label = QLabel("Mode:")
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["-", "1", "2"])  # Aggiunge "-" come valore predefinito e le modalità 1 e 2
+        self.mode_combo.addItems(["-", "1", "2"])
         self.mode_combo.currentTextChanged.connect(self.on_mode_changed)
 
-        # Imposta il combobox per espandersi
         self.mode_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         mode_layout.addWidget(mode_label)
         mode_layout.addWidget(self.mode_combo)
         layout.addLayout(mode_layout)
 
-        # Layout per selezionare il tipo di periferica (ePWM o Timer) per modalità 1
+        # Layout to select device type (ePWM or Timer) for mode 1
         self.peripheral_layout = QHBoxLayout()
         self.peripheral_label = QLabel("Interrupt Peripheral:")
         self.peripheral_combo = QComboBox()
-        self.peripheral_combo.addItems(["-"])  # Solo "-" all'inizio
+        self.peripheral_combo.addItems(["-"])
         self.peripheral_combo.currentTextChanged.connect(self.on_peripheral_changed)
         self.peripheral_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.peripheral_layout.addWidget(self.peripheral_label)
         self.peripheral_layout.addWidget(self.peripheral_combo)
 
-        # Nasconde il layout della periferica all'inizio
+        # Hide the device layout at the beginning
         self.peripheral_label.hide()
         self.peripheral_combo.hide()
         layout.addLayout(self.peripheral_layout)
 
-        # Menu a tendina per il Trigger ADC - visibile solo per modalità 2
+        # Drop-down menu for ADC Trigger - visible for mode 2 only
         self.trigger_adc_layout = QHBoxLayout()
         self.trigger_adc_label = QLabel("Trigger ADC:")
         self.trigger_adc_combo = QComboBox()
-        self.trigger_adc_combo.addItems(["-"])  # Solo "-" all'inizio
+        self.trigger_adc_combo.addItems(["-"])
         self.trigger_adc_combo.currentTextChanged.connect(self.on_trigger_adc_changed)
         self.trigger_adc_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.trigger_adc_layout.addWidget(self.trigger_adc_label)
         self.trigger_adc_layout.addWidget(self.trigger_adc_combo)
 
-        # Nasconde il layout del Trigger ADC all'inizio
+        # Hide the ADC Trigger layout at the beginning
         self.trigger_adc_label.hide()
         self.trigger_adc_combo.hide()
         layout.addLayout(self.trigger_adc_layout)
 
-        # Campo per il periodo del timer - condiviso tra le modalità 1 e 2
+        # Timer period field (shared between modes 1 and 2)
         self.timer_period_layout = QHBoxLayout()
         self.timer_period_label = QLabel("Period Timer [micro seconds]:")
         self.timer_period_input = QLineEdit()
         self.timer_period_input.setPlaceholderText("Enter timer period")
-        self.timer_period_input.textChanged.connect(self.update_save_button_state)  # Aggiunge controllo dinamico
+        self.timer_period_input.textChanged.connect(self.update_save_button_state)
         self.timer_period_layout.addWidget(self.timer_period_label)
         self.timer_period_layout.addWidget(self.timer_period_input)
 
-        # Nasconde il layout del periodo del timer all'inizio
+        # Hide the timer period layout at the beginning
         self.timer_period_label.hide()
         self.timer_period_input.hide()
         layout.addLayout(self.timer_period_layout)
 
-        # Spacer per spingere i pulsanti verso il basso
+        # Spacer to push buttons down
         layout.addStretch()
 
-        # Layout per i bottoni
+        # Layout for buttons
         button_layout = QHBoxLayout()
-        self.save_button = QPushButton("Save")  # Cambiato per abilitare il controllo dinamico
-        self.save_button.setEnabled(False)  # Disabilitato inizialmente
+        self.save_button = QPushButton("Save")
+        self.save_button.setEnabled(False)
         self.save_button.clicked.connect(self.save_and_close)
         cancel_button = QPushButton("Cancel")
         cancel_button.clicked.connect(self.cancel_and_close)
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(cancel_button)
 
-        # Aggiunge i bottoni al layout principale
         layout.addLayout(button_layout)
-
-        # Imposta il layout principale
         self.setLayout(layout)
 
     def on_mode_changed(self, mode):
+
         """
-        Mostra o nasconde i campi in base alla modalita scelta.
+        Show or hide fields based on the chosen mode.
         """
+
         if mode == "-":
-            # Nasconde tutto se si torna a "-"
             self.peripheral_label.hide()
             self.peripheral_combo.hide()
             self.timer_period_label.hide()
@@ -269,50 +301,49 @@ class ProjectConfigWindow(QDialog):
             return
 
         if "-" in self.mode_combo.itemText(0):
-            # Rimuove l'opzione "-" dalla modalità dopo la prima selezione
+
+            # Remove the "-" option from the mode after the first selection
             self.mode_combo.removeItem(0)
 
         if mode == "1":
-            # Mostra il menu periferica
             self.peripheral_combo.clear()
-            self.peripheral_combo.addItems(["-", "ePWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 1
+            self.peripheral_combo.addItems(["-", "ePWM", "Timer"])
             self.peripheral_label.show()
             self.peripheral_combo.show()
 
-            # Nasconde i campi specifici per modalità 2
             self.trigger_adc_label.hide()
             self.trigger_adc_combo.hide()
             self.timer_period_label.hide()
             self.timer_period_input.hide()
+
         elif mode == "2":
-            # Mostra il menu Trigger ADC
             self.trigger_adc_combo.clear()
-            self.trigger_adc_combo.addItems(["-", "ePWM", "Timer"])  # Aggiunge "-" e le opzioni per modalità 2
+            self.trigger_adc_combo.addItems(["-", "ePWM", "Timer"])
             self.trigger_adc_label.show()
             self.trigger_adc_combo.show()
 
-            # Nasconde inizialmente il Period Timer finché non viene selezionato Timer
             self.timer_period_label.hide()
             self.timer_period_input.hide()
 
-            # Nasconde il menu periferica
             self.peripheral_label.hide()
             self.peripheral_combo.hide()
 
         self.update_save_button_state()
 
     def on_peripheral_changed(self, peripheral):
+
         """
-        Mostra o nasconde il campo per il periodo del timer in base alla periferica scelta (solo per modalita 1).
+        Show or hide the timer period field based on the selected device (mode 1 only).
         """
+
         if peripheral == "-":
-            # Nasconde il periodo del timer se si torna a "-"
             self.timer_period_label.hide()
             self.timer_period_input.hide()
             return
 
         if "-" in self.peripheral_combo.itemText(0):
-            # Rimuove l'opzione "-" dopo la prima selezione
+
+            # Remove the "-" option after the first selection
             self.peripheral_combo.removeItem(0)
 
         if peripheral == "Timer":
@@ -325,17 +356,19 @@ class ProjectConfigWindow(QDialog):
         self.update_save_button_state()
 
     def on_trigger_adc_changed(self, trigger):
+
         """
-        Mostra o nasconde il campo per il periodo del timer in base al trigger ADC scelto (solo per modalita 2).
+        Show or hide the timer period field based on the chosen ADC trigger (mode 2 only).
         """
+
         if trigger == "-":
-            # Nasconde il periodo del timer se si torna a "-"
             self.timer_period_label.hide()
             self.timer_period_input.hide()
             return
 
         if "-" in self.trigger_adc_combo.itemText(0):
-            # Rimuove l'opzione "-" dopo la prima selezione
+
+            # Remove the "-" option after the first selection
             self.trigger_adc_combo.removeItem(0)
 
         if trigger == "Timer":
@@ -350,19 +383,20 @@ class ProjectConfigWindow(QDialog):
 
     def update_save_button_state(self):
 
-        #Abilita o disabilita il pulsante Save in base allo stato attuale dei campi.
-        #Condizioni per abilitare:
-        #- Modalità 1 + ePWM
-        #- Modalità 1 + Timer + periodo valido (numero positivo)
-        #- Modalità 2 + ePWM
-        #- Modalità 2 + Timer + periodo valido (numero positivo)
+        """
+        Enable or disable the Save button based on the current state of the fields.
+        Conditions to enable:
+        Mode 1 + ePWM
+        Mode 1 + Timer + valid period (positive number)
+        Mode 2 + ePWM 
+        Mode 2 + Timer + valid period (positive number)
+        """
 
         mode = self.mode_combo.currentText()
         peripheral = self.peripheral_combo.currentText()
         trigger_adc = self.trigger_adc_combo.currentText()
         timer_period = self.timer_period_input.text()
 
-        # Modalità 1
         if mode == "1":
             if peripheral == "ePWM":
                 self.save_button.setEnabled(True)
@@ -370,7 +404,7 @@ class ProjectConfigWindow(QDialog):
             elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 self.save_button.setEnabled(True)
                 return
-        # Modalità 2
+
         elif mode == "2":
             if trigger_adc == "ePWM":
                 self.save_button.setEnabled(True)
@@ -379,70 +413,72 @@ class ProjectConfigWindow(QDialog):
                 self.save_button.setEnabled(True)
                 return
 
-        # Disabilita il pulsante se nessuna condizione è soddisfatta
+        # Disable the button if no conditions are met
         self.save_button.setEnabled(False)
 
     def get_current_state(self):
         
-        #Ritorna lo stato attuale in base ai campi selezionati.
-        #Stati possibili:
-        #- 1: Modalità 1 + Timer + periodo valido (numero positivo)
-        #- 2: Modalità 1 + ePWM
-        #- 3: Modalità 2 + Timer + periodo valido (numero positivo)
-        #- 4: Modalità 2 + ePWM
+        """
+        Returns the current state based on the selected fields.
+        Possible states:
+        - 1: Mode 1 + Timer + valid period (positive number)
+        - 2: Mode 1 + ePWM
+        - 3 : Mode 2 + Timer + valid period (positive number)
+        - 4: Mode 2 + ePWM 
+        """
         
         mode = self.mode_combo.currentText()
         peripheral = self.peripheral_combo.currentText()
         trigger_adc = self.trigger_adc_combo.currentText()
         timer_period = self.timer_period_input.text()
 
-        # Modalità 1
         if mode == "1":
             if peripheral == "ePWM":
                 return 2
             elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 return 1
 
-        # Modalità 2
         elif mode == "2":
             if trigger_adc == "ePWM":
                 return 4
             elif trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 return 3
 
-        # Nessuno stato valido
+        # No valid status
         return None
 
-
-
     def cancel_and_close(self):
+
         """
-        Cancella il progetto
+        Delete the project
         """
         
         project_dir = f"./{self.model}_project"
         if os.path.exists(project_dir):
-            shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto        
+            shutil.rmtree(project_dir)      
 
         self.reject()
 
     def closeEvent(self, event):
+
         """
-        Esegue la stessa logica di `cancel_and_close` quando si preme la `X`.
+        Performs the same logic as `cancel_and_close` when the `X` is pressed.
         """
+
         self.cancel_and_close()
-        event.accept()  # Chiude la finestra
+        event.accept()  # Close the window
 
     def save_and_close(self):
+
         """
-        Salva la configurazione selezionata in un file JSON.
+        Save the selected configuration to a JSON file.
         """
+
         selected_mode = self.mode_combo.currentText()
         selected_peripheral = None
         selected_trigger_adc = None
         timer_period = None
 
-        # Salva i campi solo se sono rilevanti per la modalità selezionata
         if selected_mode == "1":
             selected_peripheral = self.peripheral_combo.currentText()
             if selected_peripheral == "Timer":
@@ -452,7 +488,6 @@ class ProjectConfigWindow(QDialog):
             if selected_trigger_adc == "Timer":
                 timer_period = self.timer_period_input.text()
 
-        # Raccoglie i dati da salvare
         config_data = {
             "mode": selected_mode,
             "peripheral": selected_peripheral,
@@ -460,20 +495,157 @@ class ProjectConfigWindow(QDialog):
             "timer_period": timer_period,
         }
 
-        # Salva nel file di configurazione del progetto
+        # Save to project configuration file
         save_project_config_file(self.model, config_data)
 
-        self.accept()  # Chiude con stato "Accepted"
+        # Closes with status "Accepted"
+        self.accept()
 
 
+class ConfigWindow(QDialog):
+    
+    """
+    Represents a configuration window for setting and saving TI and C2000Ware paths.
+    Allows browsing directories and saving changes to the general configuration.
+    """
+
+    def __init__(self):
+
+        """
+        Initializes the configuration window, loading existing paths and setting up the UI.
+        """
+
+        super().__init__()
+        self.setWindowTitle("Configuration")
+        self.resize(800, 200)
+
+        # Load existing configuration
+        config = general_config.load()
+        self.ti_path = config.get('ti_path', '')
+        self.c2000Ware_path = config.get('c2000Ware_path', '')
+
+        self.init_ui()
+
+    def init_ui(self):
+
+        """
+        Sets up the user interface with fields for TI and C2000Ware paths and Save/Cancel buttons.
+        """
+
+        layout = QVBoxLayout()
+
+        # Field for the TI path
+        ti_layout = QHBoxLayout()
+        ti_label = QLabel("TI folder path:")
+        self.ti_input = QLineEdit(self.ti_path)
+        ti_browse = QPushButton("Browse")
+        ti_browse.clicked.connect(self.browse_ti_path)
+        ti_layout.addWidget(ti_label)
+        ti_layout.addWidget(self.ti_input)
+        ti_layout.addWidget(ti_browse)
+
+        # Field for the C2000Ware path
+        c2000_layout = QHBoxLayout()
+        c2000_label = QLabel("C2000Ware_4_01_00_00 folder path:")
+        self.c2000_input = QLineEdit(self.c2000Ware_path)
+        c2000_browse = QPushButton("Browse")
+        c2000_browse.clicked.connect(self.browse_c2000_path)
+        c2000_layout.addWidget(c2000_label)
+        c2000_layout.addWidget(self.c2000_input)
+        c2000_layout.addWidget(c2000_browse)
+
+        # Save button
+        button_layout = QHBoxLayout()
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(self.save_and_close)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(self.cancel_and_close)
+
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+
+        # Adds everything to the layout
+        layout.addLayout(ti_layout)
+        layout.addLayout(c2000_layout)
+        layout.addLayout(button_layout)
+
+        # Set the main layout
+        self.setLayout(layout)
+
+    def browse_ti_path(self):
+
+        """
+        Allows the user to select and set the TI folder path via a file dialog.
+        """
+
+        path = QFileDialog.getExistingDirectory(self, "Select TI folder path")
+        if path:
+            self.ti_input.setText(path)
+
+    def browse_c2000_path(self):
+
+        """
+        Allows the user to select and set the C2000Ware folder path via a file dialog.
+        """
+
+        path = QFileDialog.getExistingDirectory(self, "Select C2000Ware folder path")
+        if path:
+            self.c2000_input.setText(path)
+
+    def cancel_and_close(self):
+        
+        """
+        Closes the dialog with a "Rejected" status.
+        """
+
+        self.reject()
+
+    def save_and_close(self):
+
+        """
+        Saves the configuration and closes the dialog with an "Accepted" status.
+        """
+
+        save_general_config_file(general_config, self.ti_input.text(), self.c2000_input.text())
+        self.accept()
+
+    def closeEvent(self, event):
+
+        """
+        Ensures that the "Rejected" state is set if closed with the 'x'
+        """
+
+        self.reject()
 
 
-
-
-
+# File name where to save the paths
+general_config = ConfigFile("general_config")
 
 
 def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
+
+    """
+    Saves the general configuration file with specified paths.
+
+    This function updates the configuration file with the provided `ti_path` 
+    and `c2000Ware_path`, and displays a confirmation message upon successful save.
+
+    Example Call:
+    -------------
+    save_general_config_file(config_file, "path/to/TI", "path/to/C2000Ware")
+
+    Parameters
+    ----------
+    config_file     : The configuration file object to update.
+    ti_path         : Path to the TI folder.
+    c2000Ware_path  : Path to the C2000Ware folder.
+
+    Returns
+    -------
+    - 
+
+    """
+
     config_data = {
         "ti_path": ti_path,
         "c2000Ware_path": c2000Ware_path,
@@ -482,52 +654,94 @@ def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
     QMessageBox.information(None, "General configs Saved", "Paths saved successfully!")
 
 
-
-
 def save_project_config_file(model, config_data):
+
+    """
+    Saves the project configuration file for a specific project.
+
+    This function creates or updates the configuration file for a project 
+    based on the given model name and configuration data.
+
+    Example Call:
+    -------------
+    save_project_config_file("model_name", {"key": "value"})
+
+    Parameters
+    ----------
+    model       : The name of the project.
+    config_data : The configuration data to be saved in the JSON file.
+
+    Returns
+    -------
+    -
+
+    """
 
     project_dir = f"./{model}_project"
     config_file_path = os.path.join(project_dir, f"{model}_configuration.json")
-
-    # Utilizza la classe ConfigFile per gestire il file di configurazione
     config_file = ConfigFile(name=f"{model}_configuration", extension="json")
-    config_file.path = config_file_path  # Imposta il percorso personalizzato
+    config_file.path = config_file_path
 
-    # Salva i dati nel file JSON
     config_file.save(config_data)
-
-    #QMessageBox.information(None, "Project Config Saved", f"Configuration saved to {config_file_path}")
-
-
 
 
 def open_config_window():
+    """
+    Opens the configuration window for user input.
+
+    Example Call:
+    -------------
+    open_config_window()
+
+    Parameters
+    ----------
+    -
+
+    Returns
+    -------
+    bool    : True if the configuration was saved (Accepted), False otherwise (Rejected).
+    """
+
     app = QApplication.instance() or QApplication([])
     config_window = ConfigWindow()
-    result = config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
-    return result == QDialog.Accepted  # True se salvato, False se annullato
+    result = config_window.exec()  # Return QDialog.Accepted or QDialog.Rejected
+    return result == QDialog.Accepted
+
 
 def open_project_config_window(model):
+
+    """
+    Opens the project configuration window for a specific project.
+    It collects and returns the configuration data if the user saves their changes.
+
+    Example Call:
+    -------------
+    open_project_config_window("example_model")
+
+    Parameters
+    ----------
+    model : The name of the project to configure.
+
+    Returns
+    -------
+    dict or None    : A dictionary containing the configuration data if saved, or `None` if the operation was canceled.
+    """
+
     app = QApplication.instance() or QApplication([])
     project_config_window = ProjectConfigWindow(model)
-    result = project_config_window.exec()  # Ritorna QDialog.Accepted o QDialog.Rejected
+    result = project_config_window.exec()  # Returns QDialog.Accepted or QDialog.Rejected
 
     if result == QDialog.Accepted:
-        # Raccogli i dati della configurazione
+
         config_data = {
             "mode": project_config_window.mode_combo.currentText(),
             "peripheral": project_config_window.peripheral_combo.currentText() if project_config_window.mode_combo.currentText() == "1" else None,
             "trigger_adc": project_config_window.trigger_adc_combo.currentText() if project_config_window.mode_combo.currentText() == "2" else None,
             "timer_period": project_config_window.timer_period_input.text() or None,
         }
-        return config_data  # Restituisce i dati della configurazione
+        return config_data
 
-    return None  # Restituisce None se annullato
-
-
-
-# File name where to save the paths
-general_config = ConfigFile("general_config")
+    return None
 
 
 def check_wsl_environment():
@@ -556,86 +770,6 @@ def check_wsl_environment():
     isInWSL = 'microsoft' in os.uname().release.lower()
 
 
-
-
-class ConfigWindow(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Configuration")
-        self.resize(800, 200)
-
-        # Carica la configurazione esistente
-        config = general_config.load()
-        self.ti_path = config.get('ti_path', '')
-        self.c2000Ware_path = config.get('c2000Ware_path', '')
-
-        self.init_ui()
-
-    def init_ui(self):
-        layout = QVBoxLayout()
-
-        # Campo per il percorso TI
-        ti_layout = QHBoxLayout()
-        ti_label = QLabel("TI folder path:")
-        self.ti_input = QLineEdit(self.ti_path)
-        ti_browse = QPushButton("Browse")
-        ti_browse.clicked.connect(self.browse_ti_path)
-        ti_layout.addWidget(ti_label)
-        ti_layout.addWidget(self.ti_input)
-        ti_layout.addWidget(ti_browse)
-
-        # Campo per il percorso C2000Ware
-        c2000_layout = QHBoxLayout()
-        c2000_label = QLabel("C2000Ware_4_01_00_00 folder path:")
-        self.c2000_input = QLineEdit(self.c2000Ware_path)
-        c2000_browse = QPushButton("Browse")
-        c2000_browse.clicked.connect(self.browse_c2000_path)
-        c2000_layout.addWidget(c2000_label)
-        c2000_layout.addWidget(self.c2000_input)
-        c2000_layout.addWidget(c2000_browse)
-
-        # Bottone per salvare
-        button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")
-        save_button.clicked.connect(self.save_and_close)
-        cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(self.cancel_and_close)
-
-        button_layout.addWidget(save_button)
-        button_layout.addWidget(cancel_button)
-
-        # Aggiunge tutto al layout
-        layout.addLayout(ti_layout)
-        layout.addLayout(c2000_layout)
-        layout.addLayout(button_layout)
-
-        # Imposta il layout principale
-        self.setLayout(layout)
-
-    def browse_ti_path(self):
-        path = QFileDialog.getExistingDirectory(self, "Select TI folder path")
-        if path:
-            self.ti_input.setText(path)
-
-    def browse_c2000_path(self):
-        path = QFileDialog.getExistingDirectory(self, "Select C2000Ware folder path")
-        if path:
-            self.c2000_input.setText(path)
-
-    def cancel_and_close(self):
-        self.reject()  # Chiude con stato "Rejected"
-
-    def save_and_close(self):
-        save_general_config_file(general_config, self.ti_input.text(), self.c2000_input.text())
-        self.accept()  # Chiude con stato "Accepted"
-
-    def closeEvent(self, event):
-        # Assicura che lo stato "Rejected" venga impostato se chiuso con la croce
-        self.reject()
-
-
-
-
 def convert_path_for_wsl(path):
 
     """ Converts a Windows path to a WSL-compatible path.
@@ -654,8 +788,7 @@ def convert_path_for_wsl(path):
 
     Returns:
     --------
-    str
-    - The converted WSL-compatible path. If the path is already compatible or the conditions are not met, returns the original path unchanged.
+    str     : The converted WSL-compatible path. If the path is already compatible or the conditions are not met, returns the original path unchanged.
 
     Example:
     --------
@@ -695,8 +828,7 @@ def convert_path_for_windows(path):
 
     Returns:
     --------
-    str
-    - The converted Windows-compatible path. If the path is not a WSL path or we aren't in a wsl envoirment the original path is returned.
+    str        : The converted Windows-compatible path. If the path is not a WSL path or we aren't in a wsl envoirment the original path is returned.
 
     Example:
     --------
@@ -712,35 +844,6 @@ def convert_path_for_windows(path):
         windows_path = drive_letter + '/' + '/'.join(parts[3:])
         return windows_path
     return path 
-
-
-
-
-
-def copy_file_if_exists(path_file, dest_dir):
-
-    """ Copies a file to a destination directory if it exists.
-
-    This function checks if a specified file exists. If the file is found, 
-    it copies it to the provided destination directory.
-
-    Example Call:
-    -------------
-    copy_file_if_exists(path_file="path/to/file", dest_dir="path/to/destination")
-
-    Parameters:
-    -----------
-    path_file  : The path to the file to copy.
-    dest_dir   : The directory where the file should be copied if it exists..
-
-    Returns:
-    --------
-    -
-
-    """
-
-    if os.path.exists(path_file):
-        shutil.copy(path_file, dest_dir)
 
 
 def create_ccsproject_file(model):
@@ -1117,10 +1220,25 @@ def create_cproject_file(model, ti_path, c2000_path, include):
         file.write(cproject_content)
 
 
-
-
-
 def advise(title, message):
+
+    """
+    Displays a customizable confirmation dialog with a scrollable message and "Yes"/"No" buttons.
+
+    This function creates a modal dialog using PyQt, allowing users to read a detailed message
+    and make a choice between "Yes" and "No." The dialog includes a scrollable text area for long messages
+    and a title to provide context.
+
+    Parameters
+    ----------
+    title   : The title of the dialog window.
+    message : The message to display inside the scrollable text area.
+
+    Returns
+    -------
+    bool    : True if the user clicks "Yes," False if the user clicks "No."
+    """
+
     app = QApplication.instance() or QApplication([])
     dialog = QDialog()
     dialog.setWindowTitle(title)
@@ -1160,7 +1278,6 @@ def advise(title, message):
     return response[0] if response else False
 
 
-
 def update_paths(ti_path, c2000_path):
 
     """ Updates paths based on the new values of `ti_path` and `c2000_path`.
@@ -1181,8 +1298,7 @@ def update_paths(ti_path, c2000_path):
 
     Returns:
     --------
-    dict
-    - A dictionary containing updated paths.
+    dict       : A dictionary containing updated paths.
 
     """
     
@@ -1306,7 +1422,6 @@ def check_paths(ti_path, c2000_path):
                     f"{missing_message}Do you want to delete the {general_config.get_name()} file (Yes) or not (No)"
                 )
 
-
                 if response:
                     delete_config_file()
                     return 
@@ -1316,16 +1431,37 @@ def check_paths(ti_path, c2000_path):
                 QMessageBox.information(None, "Paths and Files Check", "All required paths and files are present.")
                 break
 
+
 def press_configure_button():
-    """Handles the configuration setup process when the configure button is pressed."""
+    
+    """
+    Handles the configuration setup triggered by the configure button.
+
+    This function checks the environment (e.g., WSL detection) and opens a configuration 
+    window for the user to set or adjust settings. If the configuration is saved, it 
+    proceeds to validate paths for necessary resources.
+    
+    Example Call:
+    -------------
+    press_configure_button()
+
+    Parameters:
+    -----------
+    -
+
+    Returns:
+    --------
+    -
+    """
+
     check_wsl_environment()
     app = QApplication.instance() or QApplication([])
 
-    # Apri la finestra di configurazione
+    # Open the configuration window
     if not open_config_window():
         return
 
-    # Continua solo se la configurazione è stata salvata
+    # Continue only if the configuration has been saved
     config = general_config.load()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
@@ -1333,25 +1469,27 @@ def press_configure_button():
     check_paths(ti_path, c2000Ware_path)
 
 
-
-
-
 def check_blocks_set(blocks):
-    """
-    Analizza i blocchi e restituisce un set delle funzioni utilizzate.
 
-    Parameters
-    ----------
-    blocks : list
-        Lista di blocchi con attributi come 'fcn' e 'name'.
-
-    Returns
-    -------
-    set
-        Set delle funzioni dei blocchi.
     """
-    for block in blocks:
-        print(f" - {block}")
+    Analyzes blocks and returns a set of functions used.
+
+    This function iterates through a list of blocks, extracts their associated 
+    functions (if available), and returns them as a set.
+
+    Example Call:
+    -------------
+    result = check_blocks_set(blocks)
+
+    Parameters:
+    -----------
+    blocks : List of blocks.
+
+    Returns:
+    --------
+    set    : Set of functions associated with the provided blocks.
+    """
+
     block_functions = set()
 
     for block in blocks:
@@ -1364,20 +1502,26 @@ def check_blocks_set(blocks):
 
 
 def check_blocks_list(blocks):
-    """
-    Analizza i blocchi e restituisce una lista delle funzioni utilizzate,
-    mantenendo anche i duplicati.
 
-    Parameters
-    ----------
-    blocks : list
-        Lista di blocchi con attributi come 'fcn' e 'name'.
-
-    Returns
-    -------
-    list
-        Lista delle funzioni dei blocchi, inclusi eventuali duplicati.
     """
+    Analyzes blocks and returns a list of functions used, including duplicates.
+
+    This function iterates through a list of blocks, extracts their associated 
+    functions (if available), and returns them as a list, preserving duplicates.
+
+    Example Call:
+    -------------
+    result = check_blocks_list(blocks)
+
+    Parameters:
+    -----------
+    blocks  : List of blocks.
+
+    Returns:
+    --------
+    list    : List of functions associated with the provided blocks, including duplicates.
+    """
+
     block_functions = []
 
     for block in blocks:
@@ -1390,15 +1534,44 @@ def check_blocks_list(blocks):
 
 
 def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
+    
+    """
+    Finds and copies required source and header files for specified functions.
+
+    This function scans the given `CodeGen_path` directory for source (`.c`) 
+    and header (`.h`) files related to the provided `function_names`. It applies 
+    special rules for certain functions and copies the matched files to the 
+    specified destination directories for source and header files.
+
+    Example Call:
+    -------------
+    files = find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir)
+
+    Parameters:
+    -----------
+    function_names : List of function names for which files need to be located and copied.
+    CodeGen_path   : Path to the directory where the source and header files are located.
+    dest_c_dir     : Destination directory for `.c` files.
+    dest_h_dir     : Destination directory for `.h` files.
+
+    Returns:
+    --------
+    dict           : A dictionary where each function is mapped to its associated `.c` and `.h` file paths (if found).
+
+    Example:
+        {
+            "adcblk": {"c_file": "/path/to/adcblk.c", "h_file": "/path/to/adc.h"},
+            "step": {"c_file": "/path/to/input.c", "h_file": None},
+        }
+    """
+
     print(f"Function names to process: {function_names}")    
 
     found_files = {}
-
-    # Crea le directory di destinazione se non esistono
     os.makedirs(dest_c_dir, exist_ok=True)
     os.makedirs(dest_h_dir, exist_ok=True)
 
-    # Regole speciali per funzioni specifiche
+    # Special rules for specific functions
     special_cases = {
         "adcblk": ["adcblk.c", "adc.c", "adc.h"],
         "inputGPIOblk": ["inputGPIOblk.c", "button.c", "button.h"],
@@ -1416,14 +1589,13 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
         "print":["output.c"]
     }
 
-    # Ciclo attraverso le funzioni
     for function in function_names:
         found_files[function] = {"c_file": None, "h_file": None}
 
-        # Determina i file da cercare (speciali o standard)
+        # Determine which files to search (special or standard)
         files_to_search = special_cases.get(function, [f"{function}.c"])
 
-        # Cerca e copia i file
+        # Search and copy files
         for file_name in files_to_search:
             dest_dir = dest_c_dir if file_name.endswith(".c") else dest_h_dir
             for root, _, files in os.walk(CodeGen_path):
@@ -1433,21 +1605,42 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
                     shutil.copy(source_path, dest_path)
                     key = "c_file" if file_name.endswith(".c") else "h_file"
                     found_files[function][key] = dest_path
-                    break  # Trova il file e interrompe la ricerca
+                    break
 
     return found_files
 
+
 def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_output):
     """
-    Dispatcher per generare il main.c in base allo stato.
+    Dispatches the generation of `main.c` based on the provided state.
+
+    This function selects the appropriate generation routine for `main.c` 
+    depending on the given state and configuration parameters.
+
+    Example Call:
+    -------------
+    dispatch_main_generation(1, "path/to/main.c", "model_name", 100, 1500, "PWM1")
 
     Parameters:
     -----------
-    state : int
-        Stato corrente della configurazione (1, 2, 3, 4).
-    path_main : str
-        Percorso completo del file main.c.
+    state         : int
+        Current configuration state:
+        - 1: Mode 1 with Timer
+        - 2: Mode 1 with ePWM
+        - 3: Mode 2 with Timer
+        - 4: Mode 2 with ePWM
+
+    path_main    : Full path to the `main.c` file to be generated.
+    model        : Name of the model being used for generation.
+    timer_period : Timer period in microseconds (used in Timer-based modes).
+    tbprd        : value of register tbprd (for pwm period).
+    pwm_output   : Identifier of the PWM output (e.g., "PWM1", "PWM2").
+
+    Returns:
+    --------
+    -
     """
+
     if state == 1:
         generate_main_mode1_timer(path_main, model, timer_period)
     elif state == 2:
@@ -1456,11 +1649,29 @@ def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_o
         generate_main_mode2_timer(path_main, model, timer_period)
     elif state == 4:
         generate_main_mode2_epwm(path_main, model, tbprd, pwm_output)
-    else:
-        raise ValueError(f"Stato non valido: {state}")
+
 
  # state 1
 def generate_main_mode1_timer(path_main, model, timer_period):
+    
+    """
+    Generates the main.c file for Mode 1 using Timer interrupts.
+
+    Example Call:
+    -------------
+    generate_main_mode1_timer("path/to/main.c", "model_name", 1000)
+
+    Parameters:
+    -----------
+    path_main    : Path to the output main.c file.
+    model        : Name of the model to integrate into the main program.
+    timer_period : Timer period in microseconds.
+
+    Returns:
+    --------
+    -
+    """
+
     Tsamp = float(timer_period)/1000000
 
     with open(path_main, 'w') as f:
@@ -1469,19 +1680,19 @@ def generate_main_mode1_timer(path_main, model, timer_period):
         f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
         f.write("//###########################################################################\n\n")
     
-        f.write('#include "F28x_Project.h"\n\n')  # Include principale per il progetto
+        f.write('#include "F28x_Project.h"\n\n')
     
-        # Prototipi delle funzioni
+        # Function prototypes
         f.write("__interrupt void cpu_timer0_isr(void);\n")
         f.write("void setup(void);\n")
         f.write("double get_run_time(void);\n")
         f.write("double get_Tsamp(void);\n\n")
     
-        # Variabili globali
+        # Global variables
         f.write(f"static double Tsamp = {Tsamp};  // Intervallo temporale\n")
         f.write("static double T = 0.0;         // Tempo corrente\n\n")
     
-        # Funzione main
+        # Main function
         f.write("void main(void)\n")
         f.write("{\n")
         f.write("    setup();\n")
@@ -1489,7 +1700,7 @@ def generate_main_mode1_timer(path_main, model, timer_period):
         f.write(f"    {model}_end();\n")
         f.write("}\n\n")
     
-        # ISR del Timer0
+        # ISR of Timer0
         f.write("__interrupt void cpu_timer0_isr(void)\n")
         f.write("{\n")
         f.write("    CpuTimer0.InterruptCount++;\n")
@@ -1498,7 +1709,7 @@ def generate_main_mode1_timer(path_main, model, timer_period):
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
         f.write("}\n\n")
     
-        # Configurazione iniziale
+        # Initial setup
         f.write("void setup(void)\n")
         f.write("{\n")
         f.write("    InitSysCtrl();\n")
@@ -1526,7 +1737,6 @@ def generate_main_mode1_timer(path_main, model, timer_period):
         f.write("    EDIS;\n")
         f.write("}\n\n")
     
-        # Funzioni helper
         f.write("double get_run_time(void)\n")
         f.write("{\n")
         f.write("    return T;\n")
@@ -1540,10 +1750,28 @@ def generate_main_mode1_timer(path_main, model, timer_period):
 
 #state 2
 def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
-    pwm_period = (2 * int(tbprd)) / 1e8  # Calcolo di pwm_period
+    
+    """
+    Generates the main.c file for Mode 1 using an ePWM module.
 
+    Example Call:
+    -------------
+    generate_main_mode1_epwm("path/to/main.c", "model_name", 5000, "out1a")
 
-    # Controllo esplicito per ogni valore di pwm_output
+    Parameters:
+    -----------
+    path_main   : Path to the output main.c file.
+    model       : Name of the model to integrate into the main program.
+    tbprd       : Timer base period register value for ePWM.
+    pwm_output  : Specifies the ePWM output channel (e.g., "out1a", "out1b").
+
+    Returns:
+    --------
+    -
+    """
+
+    pwm_period = (2 * int(tbprd)) / 1e8
+
     if pwm_output == "out1a" or pwm_output == "out1b":
         number_epwm = "epwm1"
         number_epwm_capsLock = "EPWM1"
@@ -1618,18 +1846,26 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
 
     with open(path_main, "w") as f:
         f.write('#include "F28x_Project.h"\n\n')
+
+        # Function prototypes
         f.write(f"__interrupt void {number_epwm}_isr(void);\n")
         f.write("void setup(void);\n")
         f.write("double get_run_time(void);\n")
         f.write("double get_Tsamp(void);\n\n")
+
+        # Global variables
         f.write(f"static double Tsamp = {pwm_period}; // Intervallo temporale\n")
         f.write("static double T = 0.0;         // Tempo corrente\n\n")
+
+        # Main function
         f.write("void main(void)\n")
         f.write("{\n")
         f.write("    setup();\n")
         f.write("    while (1) {}\n")
         f.write(f"    {model}_end();\n")
         f.write("}\n\n")
+
+        # ISR for ePWM
         f.write(f"__interrupt void {number_epwm}_isr(void)\n")
         f.write("{\n")
         f.write("    T += Tsamp;\n")
@@ -1638,6 +1874,8 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         f.write(f"    {epwm_regs}.ETCLR.bit.INT = 1;\n\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;\n")
         f.write("}\n\n")
+
+        # Setup function
         f.write("void setup(void)\n")
         f.write("{\n")
         f.write("    InitSysCtrl();\n")
@@ -1652,6 +1890,8 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         f.write("    EALLOW;\n")
         f.write(f"    PieVectTable.{number_epwm_capsLock}_INT = &{number_epwm}_isr;\n")
         f.write("    EDIS;\n\n")
+
+        # Interrupt configuration
         f.write("    // Enable ePWM interrupt in PIE group 3\n")
         f.write(f"    PieCtrlRegs.PIEIER3.bit.INTx{number_epwm_digit} = 1;\n\n")
         f.write("    // Enable CPU interrupt group 3\n")
@@ -1664,12 +1904,15 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         f.write(f"    {epwm_regs}.ETSEL.bit.INTSEL = ET_CTR_ZERO;    // Trigger interrupt a TBCTR = 0\n")
         f.write(f"    {epwm_regs}.ETSEL.bit.INTEN = 1;               // Abilita l'interrupt\n")
         f.write(f"    {epwm_regs}.ETPS.bit.INTPRD = ET_1ST;          // Genera interrupt ad ogni evento\n\n")
+
+        # Clock configuration for ePWM
         f.write("    EALLOW;\n")
         f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
         f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
         f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
         f.write("    EDIS;\n")
         f.write("}\n\n")
+
         f.write("double get_run_time(void)\n")
         f.write("{\n")
         f.write("    return T;\n")
@@ -1682,6 +1925,25 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
 
 # state 3
 def generate_main_mode2_timer(path_main, model, timer_period):
+
+    """
+    Generates the main.c file for Mode 2 with Timer-based ADC triggering.
+
+    Example Call:
+    -------------
+    generate_main_mode2_timer(path_main="/path/to/main.c", model="exampleModel", timer_period=10000)
+
+    Parameters:
+    -----------
+    path_main    : The file path where the main.c file will be generated.
+    model        :  The name of the project for which the file is generated.
+    timer_period : The timer period in microseconds for sampling intervals.
+
+    Returns:
+    --------
+    -
+    """
+
     Tsamp = float(timer_period)/1000000
 
     with open(path_main, 'w') as f:
@@ -1690,7 +1952,7 @@ def generate_main_mode2_timer(path_main, model, timer_period):
         f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
         f.write("//###########################################################################\n\n")
     
-        f.write('#include "F28x_Project.h"\n\n')  # Include principale per il progetto
+        f.write('#include "F28x_Project.h"\n\n')
 
         # Function Prototypes
         f.write("// Function Prototypes\n")
@@ -1809,12 +2071,30 @@ def generate_main_mode2_timer(path_main, model, timer_period):
         f.write("}\n")
 
 
-
 # state 4
 def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
-    pwm_period = (2 * int(tbprd)) / 1e8  # Calcolo di pwm_period
+
+    """
+    Generates the main.c file for Mode 2 with ePWM-based ADC triggering.
+
+    Example Call:
+    -------------
+    generate_main_mode2_epwm(path_main="/path/to/main.c", model="exampleModel", tbprd=2000, pwm_output="out1a")
+
+    Parameters:
+    -----------
+    path_main   : The file path where the main.c file will be generated.
+    model       : The name of the project for which the file is generated.
+    tbprd       : Time-base period for ePWM in clock cycles.
+    pwm_output  : The ePWM output channel (e.g., "out1a", "out2b") used for ADC triggering.
+
+    Returns:
+    --------
+    -
+    """
+
+    pwm_period = (2 * int(tbprd)) / 1e8
     
-    # Controllo esplicito per ogni valore di pwm_output
     if pwm_output == "out1a" or pwm_output == "out1b":
         epwmRegs = "EPwm1Regs"
         triggerOnePWM = 5
@@ -2045,54 +2325,70 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("}\n")
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def check_epwm_block(functions_present_schema):
+
+    """
+    Validates the presence of the 'epwmblk' function in the provided schema.
+
+    This function checks the number of occurrences of the 'epwmblk' function in 
+    the input list. It identifies errors if the function is missing or appears 
+    multiple times, returning appropriate error codes or success status.
+
+    Example Call:
+    -------------
+    result = check_epwm_block(functions_present_schema=["epwmblk", "adcblk"])
+
+    Parameters:
+    -----------
+    functions_present_schema : A list of function names representing the current schema.
+
+    Returns:
+    --------
+    int : Status code indicating the validation result:
+        - 1 : Error, 'epwmblk' is missing.
+        - 2 : Error, 'epwmblk' is present more than once.
+        - 3 : Success, 'epwmblk' is present exactly once.
+    """
 
     epwm_count = functions_present_schema.count("epwmblk")
 
     if epwm_count == 0:
-        return 1  # Errore: 'epwmblk' assente
+        return 1  # Error: 'epwmblk' is missing
     elif epwm_count > 1:
-        return 2  # Errore: 'epwmblk' presente più di una volta
+        return 2  # Error: 'epwmblk' occurs more than once
     else:
-        return 3  # Successo: 'epwmblk' presente esattamente una volta
+        return 3  # Success: 'epwmblk' occurs exactly once
+
 
 def extract_pwm_parameters(blocks, target_function):
+
     """
-    Estrae i parametri Integer e String da un blocco con la funzione target.
+    Extracts PWM parameters from a block matching the target function.
 
-    Parameters
-    ----------
-    blocks : list
-        Lista di blocchi (oggetti RCPblk).
-    target_function : str
-        Nome della funzione da cercare.
+    This function iterates through a list of blocks and extracts specific parameters 
+    if a block with the target function name is found. It retrieves the first integer 
+    parameter (`pwm_period`) and the string parameter (`pwm_output`).
 
-    Returns
-    -------
+    Example Call:
+    -------------
+    pwm_period, pwm_output = extract_pwm_parameters(blocks, "target_function_name")
+
+    Parameters:
+    -----------
+    blocks          : A list of blocks, each containing attributes such as `fcn`, `intPar`, and `str`.
+    target_function : The function name to match within the blocks.
+
+    Returns:
+    --------
     tuple
-        pwm_period e pwm_output se trovato, altrimenti (None, None).
+        A tuple containing:
+        - pwm_period : int or None
+            The first integer parameter of the block if available.
+        - pwm_output : str or None
+            The string parameter of the block if available.
+        Returns (None, None) if no matching block is found.
     """
+
     for block in blocks:
         if block.fcn == target_function:
             pwm_period = block.intPar[0] if len(block.intPar) > 0 else None
@@ -2100,7 +2396,36 @@ def extract_pwm_parameters(blocks, target_function):
             return pwm_period, pwm_output
     return None, None
 
+
 def extract_adc_parameters(blocks, target_function):
+
+    """
+    Extracts ADC parameters from blocks matching the target function.
+
+    This function scans a list of blocks to identify those with a specific target function 
+    and extracts their ADC module and channel parameters. If an ADC module 'A'/'a' with 
+    channel 0 is found, the function immediately returns `None`. Otherwise, it returns 
+    a list of dictionaries containing the extracted parameters.
+
+    Example Call:
+    -------------
+    adc_parameters = extract_adc_parameters(blocks, "target_function_name")
+
+    Parameters:
+    -----------
+    blocks          : A list of blocks, each containing attributes such as `fcn`, `intPar`, and `str`.
+    target_function : The function name to match within the blocks.
+
+    Returns:
+    --------
+    list or None
+        - A list of dictionaries containing:
+            - "module" : str or None
+                The ADC module identifier (e.g., 'A', 'B', etc.), or None if unavailable.
+            - "channel" : int or None
+                The ADC channel number, or None if unavailable.
+        - Returns `None` immediately if the module is 'A'/'a' with channel 0.
+    """
 
     extracted_blocks = []
 
@@ -2109,12 +2434,12 @@ def extract_adc_parameters(blocks, target_function):
             adc_module = block.str if len(block.str) > 0 else None
             adc_channel = block.intPar[0] if len(block.intPar) > 0 else None
             
-            # Verifica se la combinazione ADC 'A'/'a' e canale 0 è presente
+            # Check if the ADC combination 'A'/'a' and channel 0 is present
             if adc_module and adc_channel is not None:
                 if adc_module.lower() == 'a' and adc_channel == 0:
                     return None
             
-            # Aggiunge il dizionario con i parametri
+            # Adds the dictionary with parameters
             extracted_blocks.append({
                 "module": adc_module,
                 "channel": adc_channel
@@ -2123,39 +2448,34 @@ def extract_adc_parameters(blocks, target_function):
     return extracted_blocks
 
 
-
-
 def create_project_structure(model, blocks):
     
-    """ Creates a project structure based on the specified model name.
+    """
+    Creates a project structure based on the specified project name.
 
-    This function sets up the directory structure, configuration files, and main 
-    source file needed for a project. It verifies WSL paths if necessary, copies 
-    relevant files, and generates additional project files for a Code Composer 
-    Studio (CCS) project.
+    This function initializes the directory structure, configuration files, and main source file
+    required for a project. It validates the configuration, processes necessary files, and ensures
+    compatibility with Code Composer Studio (CCS) workflows. Additionally, it verifies environment 
+    specifics like WSL paths and handles potential schema or configuration errors.
 
     Example Call:
     -------------
-    create_project_structure("my_model")
+    create_project_structure("my_model", blocks)
 
     Parameters:
     -----------
-    model : The name of project
+    model  : The name of the project to be created.
+    blocks : A list of blocks defining the project structure, containing attributes like 'fcn', 'intPar', and 'str'.
 
     Returns:
     --------
     -
-
     """
 
     functions_name = check_blocks_set(blocks)
     functions_present_schema = check_blocks_list(blocks)
 
-
-
-    # Assicurati che QApplication sia attiva
     app = QApplication.instance() or QApplication([])
-
     check_wsl_environment()
 
     # Define paths for config.json in the directory where {model}_gen will be created and inside {model}_gen
@@ -2166,11 +2486,9 @@ def create_project_structure(model, blocks):
     if not os.path.isfile(config_path_outside_gen):
         QMessageBox.information(None, "File Status", f"{general_config.get_name()} not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
         return 
-        #os.makedirs(os.path.join(parent_dir, f'{model}_gen'), exist_ok=True)  # Ensure {model}_gen directory exists
-        #shutil.copy(config_path_outside_gen, config_path_inside_gen)  # Copy and overwrite if exists
     
     # Load the configuration from the parent directory
-    general_config.path = config_path_outside_gen  # Update the path dynamically
+    general_config.path = config_path_outside_gen
     config = general_config.load()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
@@ -2219,20 +2537,17 @@ def create_project_structure(model, blocks):
         # Move {model}.c file in the src directory
         shutil.move(source_file, src_dir)
 
-
     config_data = open_project_config_window(model)
     if not config_data:
         QMessageBox.warning(None, "Project Cancelled", f"Project {model} has been cancelled.")
-        return False  # Processo interrotto, configurazione annullata
+        return False
+
     save_project_config_file(model, config_data)
-
-    # Ottieni lo stato dal metodo get_current_state
-    config_window = ProjectConfigWindow(model)  # Assumendo che la finestra restituisca lo stato
+    config_window = ProjectConfigWindow(model)
     state = config_window.get_current_state()
-
     main_file = os.path.join(src_dir, "main.c")
 
-    # Controlla se c'è solo un blocchetto epwm'
+    # Check if there is only one epwm block'
     if state == 2 or state ==4:
         check_result = check_epwm_block(functions_present_schema)
 
@@ -2240,16 +2555,16 @@ def create_project_structure(model, blocks):
             QMessageBox.warning(None, "Error", f"ePWM block is missing from the schema. At least one ePWM block is required. Project {model} has been cancelled.")
             project_dir = f"./{model}_project"
             if os.path.exists(project_dir):
-                shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto  
-            return  # Interrupt the process in case of error
+                shutil.rmtree(project_dir)
+            return
 
         elif check_result == 2:
             print("Error: 'epwmblk' is present more than once in the schema. Only one ePWM block is allowed.")
             QMessageBox.warning(None, "Error", f"ePWM block is present more than once in the schema. Only one ePWM block is allowed. Project {model} has been cancelled.")
             project_dir = f"./{model}_project"
             if os.path.exists(project_dir):
-                shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto  
-            return  # Interrupt the process in case of error
+                shutil.rmtree(project_dir)
+            return
         
         if state == 4:
             adc_blocks = extract_adc_parameters(blocks, 'adcblk')
@@ -2257,7 +2572,7 @@ def create_project_structure(model, blocks):
                 QMessageBox.warning(None, "Error", f"Module A, channel 0 is already busy managing synchronization. Project {model} has been cancelled.")
                 project_dir = f"./{model}_project"
                 if os.path.exists(project_dir):
-                    shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto
+                    shutil.rmtree(project_dir)
                 return    
                 
         tbprd, pwm_output = extract_pwm_parameters(blocks, 'epwmblk')
@@ -2269,26 +2584,16 @@ def create_project_structure(model, blocks):
             QMessageBox.warning(None, "Error", f"Module A, channel 0 is already busy managing synchronization. Project {model} has been cancelled.")
             project_dir = f"./{model}_project"
             if os.path.exists(project_dir):
-                shutil.rmtree(project_dir)  # Rimuove tutta la directory del progetto
+                shutil.rmtree(project_dir)
             return  
 
-   
     if state == 1 or state == 3:
         timer_period = config_data.get("timer_period")
         dispatch_main_generation(state, main_file, model, timer_period, None, None)
 
-
-    
-
-    
-
-
-
-    # Call the function to copy files based on content in {model}.c
-    #copy_files_based_on_content(functions_name, src_path, include_path, devices_path, src_dir, include_dir)
     find_and_copy_files(functions_name,  CodeGen_path, src_dir, include_dir)
 
-    # Copia il file pyblock.h
+    # Copy the pyblock.h file
     pyblock_file = os.path.join(pyblock_path, 'pyblock.h')
     if os.path.exists(pyblock_file):
         shutil.copy(pyblock_file, include_dir)
@@ -2300,13 +2605,11 @@ def create_project_structure(model, blocks):
             if os.path.isfile(full_file_name):
                 shutil.copy(full_file_name, targetConfigs_dir)
 
-   
     # Absolute path include directory
     include_dir_absolute_path = os.path.abspath(include_dir)
 
     if isInWSL:
         include_dir_absolute_path = convert_path_for_windows(include_dir_absolute_path)
-
 
     # create the .project, .cproject, .ccsproject files
     create_ccsproject_file(model)
@@ -2315,3 +2618,4 @@ def create_project_structure(model, blocks):
 
     # Displays a message indicating that the project was created successfully
     QMessageBox.information(None, "Project Status", "Project successfully created")
+
