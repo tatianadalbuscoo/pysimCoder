@@ -1899,11 +1899,6 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         f.write("    // Enable global interrupts and real-time interrupts\n")
         f.write("    EINT;\n")
         f.write("    ERTM;\n\n")
-        f.write("    // Interrupt Setup\n")
-        f.write("    // l'interrupt viene generato una volta per ogni ciclo completo del periodo.\n")
-        f.write(f"    {epwm_regs}.ETSEL.bit.INTSEL = ET_CTR_ZERO;    // Trigger interrupt a TBCTR = 0\n")
-        f.write(f"    {epwm_regs}.ETSEL.bit.INTEN = 1;               // Abilita l'interrupt\n")
-        f.write(f"    {epwm_regs}.ETPS.bit.INTPRD = ET_1ST;          // Genera interrupt ad ogni evento\n\n")
 
         # Clock configuration for ePWM
         f.write("    EALLOW;\n")

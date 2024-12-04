@@ -85,6 +85,9 @@ void ConfigureEPWMRegisters(volatile struct EPWM_REGS* EPwmRegs, int tbprd, int 
     EPwmRegs->TBCTL.bit.PHSEN = TB_DISABLE;         // Disable phase
     EPwmRegs->TBCTL.bit.HSPCLKDIV = TB_DIV1;        // No high-speed clock division
     EPwmRegs->TBCTL.bit.CLKDIV = TB_DIV1;           // No clock division
+    EPwmRegs->ETSEL.bit.INTSEL = ET_CTR_ZERO;       // Trigger interrupt a TBCTR = 0
+    EPwmRegs->ETSEL.bit.INTEN = 1;                  // Abilita l'interrupt
+    EPwmRegs->ETPS.bit.INTPRD = ET_1ST;             // Genera interrupt ad ogni evento
 }
 
 // Function to dynamically update the duty cycle
@@ -185,3 +188,4 @@ void ConfigureEPWM(const char* pwm_output, int tbprd, int duty_cycle) {
         }
     }
 }
+

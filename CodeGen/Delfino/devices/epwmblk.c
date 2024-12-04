@@ -35,6 +35,7 @@ static void init(python_block* block)
     // Convert the duty-cycle to a percentage
     int duty_cycle_percentage = (int)(duty_cycle * 100);
     ConfigureEPWM(pwm_output, tbprd, duty_cycle_percentage);
+
 }
 
 
