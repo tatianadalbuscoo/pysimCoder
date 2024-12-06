@@ -2513,29 +2513,19 @@ def check_epwm_block(functions_present_schema):
 
     if epwm_count == 0:
         return 1  # Error: 'epwmblk' is missing
-    elif epwm_count > 1:
-        return 2  # Error: 'epwmblk' occurs more than once
     else:
-        return 3  # Success: 'epwmblk' occurs exactly once
+        return 2  # Success: 'epwmblk' there is at least once
 
 
-def extract_pwm_parameters(blocks, target_function):
-
+def find_matching_pwm_output(blocks, target_function, epwm_output_mode1):
     """
-    Extracts PWM parameters from a block matching the target function.
-
-    This function iterates through a list of blocks and extracts specific parameters 
-    if a block with the target function name is found. It retrieves the first integer 
-    parameter (`pwm_period`) and the string parameter (`pwm_output`).
-
-    Example Call:
-    -------------
-    pwm_period, pwm_output = extract_pwm_parameters(blocks, "target_function_name")
+    Finds the first matching PWM output that corresponds to epwm_output_mode1.
 
     Parameters:
     -----------
-    blocks          : A list of blocks, each containing attributes such as `fcn`, `intPar`, and `str`.
-    target_function : The function name to match within the blocks.
+    blocks           : A list of blocks to search through.
+    target_function  : The function name to match within the blocks.
+    epwm_output_mode1: The PWM output to match.
 
     Returns:
     --------
@@ -2545,15 +2535,18 @@ def extract_pwm_parameters(blocks, target_function):
             The first integer parameter of the block if available.
         - pwm_output : str or None
             The string parameter of the block if available.
-        Returns (None, None) if no matching block is found.
+        Returns (None, None) if no match is found.
     """
-
     for block in blocks:
         if block.fcn == target_function:
             pwm_period = block.intPar[0] if len(block.intPar) > 0 else None
             pwm_output = block.str
-            return pwm_period, pwm_output
-    return None, None
+
+            if pwm_output == epwm_output_mode1:
+                return pwm_period, pwm_output  # Match found, return immediately
+
+    return None, None  # No match found
+
 
 
 def extract_adc_parameters(blocks, target_function):
@@ -2706,7 +2699,7 @@ def create_project_structure(model, blocks):
     state = config_window.get_current_state()
     main_file = os.path.join(src_dir, "main.c")
 
-    # Check if there is only one epwm block'
+    # Controlla se c'è almeno un blocchetto epwm
     if state == 2 or state ==4:
         check_result = check_epwm_block(functions_present_schema)
 
@@ -2717,14 +2710,8 @@ def create_project_structure(model, blocks):
                 shutil.rmtree(project_dir)
             return
 
-        elif check_result == 2:
-            print("Error: 'epwmblk' is present more than once in the schema. Only one ePWM block is allowed.")
-            QMessageBox.warning(None, "Error", f"ePWM block is present more than once in the schema. Only one ePWM block is allowed. Project {model} has been cancelled.")
-            project_dir = f"./{model}_project"
-            if os.path.exists(project_dir):
-                shutil.rmtree(project_dir)
-            return
-        
+
+        #roba dell'adc (probabilmente da togliere)
         if state == 4:
             adc_blocks = extract_adc_parameters(blocks, 'adcblk')
             if (adc_blocks == None):
@@ -2732,9 +2719,38 @@ def create_project_structure(model, blocks):
                 project_dir = f"./{model}_project"
                 if os.path.exists(project_dir):
                     shutil.rmtree(project_dir)
-                return    
-                
-        tbprd, pwm_output = extract_pwm_parameters(blocks, 'epwmblk')
+                return  
+
+    # Controlla se c'è il blocchetto che serve per gestire il Tempo
+    if state == 2:
+        epwm_output_mode1 = config_data.get("epwm_output_mode1")
+
+        tbprd, pwm_output = find_matching_pwm_output(blocks, "epwmblk", epwm_output_mode1)
+
+        if tbprd is None and pwm_output is None:
+            QMessageBox.warning(None, "Error", f"The epwm block with epwm output {epwm_output_mode1} that generates the interrupt is missing. Project {model} has been cancelled.")
+            project_dir = f"./{model}_project"
+            if os.path.exists(project_dir):
+                shutil.rmtree(project_dir)
+            return
+        
+        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output)
+
+
+
+    if state == 4:
+        epwm_output_mode2 = config_data.get("epwm_output_mode2")
+
+        tbprd, pwm_output = find_matching_pwm_output(blocks, "epwmblk", epwm_output_mode2)
+
+        if tbprd is None and pwm_output is None:
+            QMessageBox.warning(None, "Error", f"The epwm block with epwm output {epwm_output_mode2} that trigger the ADC is missing. Project {model} has been cancelled.")
+            project_dir = f"./{model}_project"
+            if os.path.exists(project_dir):
+                shutil.rmtree(project_dir)
+            return
+
+
         dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output)
         
     if state == 3:
