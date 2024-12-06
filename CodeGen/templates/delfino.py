@@ -266,6 +266,8 @@ class ProjectConfigWindow(QDialog):
         self.timer_period_input.hide()
         layout.addLayout(self.timer_period_layout)
 
+
+
         # Drop-down menu for ePWM Output selection (Mode 1)
         self.epwm_output_layout_mode1 = QHBoxLayout()
         self.epwm_output_label_mode1 = QLabel("ePWM Output (Mode 1):")
@@ -273,6 +275,10 @@ class ProjectConfigWindow(QDialog):
         self.epwm_output_combo_mode1.addItems(["-"] + [f"out{i}{j}" for i in range(1, 13) for j in ['a', 'b']])
         self.epwm_output_combo_mode1.currentTextChanged.connect(self.update_save_button_state)
         self.epwm_output_combo_mode1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        # Usa QListView per abilitare lo scrolling senza le frecce in su/giù
+        view1 = QListView()
+        self.epwm_output_combo_mode1.setView(view1)
 
         self.epwm_output_layout_mode1.addWidget(self.epwm_output_label_mode1)
         self.epwm_output_layout_mode1.addWidget(self.epwm_output_combo_mode1)
@@ -289,12 +295,24 @@ class ProjectConfigWindow(QDialog):
         self.epwm_output_combo_mode2.currentTextChanged.connect(self.update_save_button_state)
         self.epwm_output_combo_mode2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
+        # Usa QListView per abilitare lo scrolling senza le frecce in su/giù
+        view2 = QListView()
+        self.epwm_output_combo_mode2.setView(view2)
+
         self.epwm_output_layout_mode2.addWidget(self.epwm_output_label_mode2)
         self.epwm_output_layout_mode2.addWidget(self.epwm_output_combo_mode2)
 
         self.epwm_output_label_mode2.hide()
         self.epwm_output_combo_mode2.hide()
         layout.addLayout(self.epwm_output_layout_mode2)
+
+
+
+
+
+
+
+
 
 
         # Spacer to push buttons down
