@@ -1,4 +1,5 @@
-﻿import os
+﻿
+import os
 import sys
 import shutil
 from numpy import nonzero, ones, asmatrix, size, array, zeros
@@ -143,29 +144,29 @@ class ProjectConfigWindow(QDialog):
     def set_initial_values(self):
 
         """
-        Sets the initial interface values ​​based on the loaded configuration.
+        Sets the initial interface values based on the loaded configuration.
         """
 
         mode = self.config_data.get("mode")
         self.mode_combo.setCurrentText(mode if mode else "-")
 
-        # Show fields consistent with the loaded mode
         if mode == "1":
             peripheral = self.config_data.get("peripheral", "-")
             self.peripheral_combo.setCurrentText(peripheral)
             self.peripheral_label.show()
             self.peripheral_combo.show()
 
-            # Timer period is only shown if Peripheral is Timer
             if peripheral == "Timer":
                 timer_period = self.config_data.get("timer_period", "")
                 self.timer_period_input.setText(timer_period)
                 self.timer_period_label.show()
                 self.timer_period_input.show()
-            else:
-                self.timer_period_input.setText("")
-                self.timer_period_label.hide()
-                self.timer_period_input.hide()
+            elif peripheral == "ePWM":
+                epwm_output = self.config_data.get("epwm_output_mode1", "-")
+                self.epwm_output_combo_mode1.setCurrentText(epwm_output)
+                self.epwm_output_label_mode1.setText("ePWM that generates the interrupt:")
+                self.epwm_output_label_mode1.show()
+                self.epwm_output_combo_mode1.show()
 
         elif mode == "2":
             trigger_adc = self.config_data.get("trigger_adc", "-")
@@ -173,24 +174,20 @@ class ProjectConfigWindow(QDialog):
             self.trigger_adc_label.show()
             self.trigger_adc_combo.show()
 
-            # Timer period is only shown if Trigger ADC is Timer
             if trigger_adc == "Timer":
                 timer_period = self.config_data.get("timer_period", "")
                 self.timer_period_input.setText(timer_period)
                 self.timer_period_label.show()
                 self.timer_period_input.show()
-            else:
-                self.timer_period_input.setText("")
-                self.timer_period_label.hide()
-                self.timer_period_input.hide()
+            elif trigger_adc == "ePWM":
+                epwm_output = self.config_data.get("epwm_output_mode2", "-")
+                self.epwm_output_combo_mode2.setCurrentText(epwm_output)
+                self.epwm_output_label_mode2.setText("ePWM that triggers ADC:")
+                self.epwm_output_label_mode2.show()
+                self.epwm_output_combo_mode2.show()
 
-        else:  # No mode selected.
-            self.peripheral_label.hide()
-            self.peripheral_combo.hide()
-            self.timer_period_label.hide()
-            self.timer_period_input.hide()
-            self.trigger_adc_label.hide()
-            self.trigger_adc_combo.hide()
+
+
 
 
     def init_ui(self):
@@ -269,6 +266,37 @@ class ProjectConfigWindow(QDialog):
         self.timer_period_input.hide()
         layout.addLayout(self.timer_period_layout)
 
+        # Drop-down menu for ePWM Output selection (Mode 1)
+        self.epwm_output_layout_mode1 = QHBoxLayout()
+        self.epwm_output_label_mode1 = QLabel("ePWM Output (Mode 1):")
+        self.epwm_output_combo_mode1 = QComboBox()
+        self.epwm_output_combo_mode1.addItems(["-"] + [f"out{i}{j}" for i in range(1, 13) for j in ['a', 'b']])
+        self.epwm_output_combo_mode1.currentTextChanged.connect(self.update_save_button_state)
+        self.epwm_output_combo_mode1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.epwm_output_layout_mode1.addWidget(self.epwm_output_label_mode1)
+        self.epwm_output_layout_mode1.addWidget(self.epwm_output_combo_mode1)
+
+        self.epwm_output_label_mode1.hide()
+        self.epwm_output_combo_mode1.hide()
+        layout.addLayout(self.epwm_output_layout_mode1)
+
+        # Drop-down menu for ePWM Output selection (Mode 2)
+        self.epwm_output_layout_mode2 = QHBoxLayout()
+        self.epwm_output_label_mode2 = QLabel("ePWM Output (Mode 2):")
+        self.epwm_output_combo_mode2 = QComboBox()
+        self.epwm_output_combo_mode2.addItems(["-"] + [f"out{i}{j}" for i in range(1, 13) for j in ['a', 'b']])
+        self.epwm_output_combo_mode2.currentTextChanged.connect(self.update_save_button_state)
+        self.epwm_output_combo_mode2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.epwm_output_layout_mode2.addWidget(self.epwm_output_label_mode2)
+        self.epwm_output_layout_mode2.addWidget(self.epwm_output_combo_mode2)
+
+        self.epwm_output_label_mode2.hide()
+        self.epwm_output_combo_mode2.hide()
+        layout.addLayout(self.epwm_output_layout_mode2)
+
+
         # Spacer to push buttons down
         layout.addStretch()
 
@@ -298,11 +326,13 @@ class ProjectConfigWindow(QDialog):
             self.timer_period_input.hide()
             self.trigger_adc_label.hide()
             self.trigger_adc_combo.hide()
+            self.epwm_output_label_mode1.hide()
+            self.epwm_output_combo_mode1.hide()
+            self.epwm_output_label_mode2.hide()
+            self.epwm_output_combo_mode2.hide()
             return
 
         if "-" in self.mode_combo.itemText(0):
-
-            # Remove the "-" option from the mode after the first selection
             self.mode_combo.removeItem(0)
 
         if mode == "1":
@@ -315,6 +345,8 @@ class ProjectConfigWindow(QDialog):
             self.trigger_adc_combo.hide()
             self.timer_period_label.hide()
             self.timer_period_input.hide()
+            self.epwm_output_label_mode2.hide()
+            self.epwm_output_combo_mode2.hide()
 
         elif mode == "2":
             self.trigger_adc_combo.clear()
@@ -322,63 +354,124 @@ class ProjectConfigWindow(QDialog):
             self.trigger_adc_label.show()
             self.trigger_adc_combo.show()
 
-            self.timer_period_label.hide()
-            self.timer_period_input.hide()
-
             self.peripheral_label.hide()
             self.peripheral_combo.hide()
+            self.timer_period_label.hide()
+            self.timer_period_input.hide()
+            self.epwm_output_label_mode1.hide()
+            self.epwm_output_combo_mode1.hide()
 
         self.update_save_button_state()
+
+
 
     def on_peripheral_changed(self, peripheral):
 
         """
-        Show or hide the timer period field based on the selected device (mode 1 only).
+        Show or hide the timer period field and ePWM output field for Mode 1.
         """
 
         if peripheral == "-":
             self.timer_period_label.hide()
             self.timer_period_input.hide()
+            self.epwm_output_label_mode1.hide()
+            self.epwm_output_combo_mode1.hide()
             return
 
+        # Rimuove "-" dalla combo box periferica dopo la prima selezione
         if "-" in self.peripheral_combo.itemText(0):
-
-            # Remove the "-" option after the first selection
             self.peripheral_combo.removeItem(0)
 
         if peripheral == "Timer":
             self.timer_period_label.show()
             self.timer_period_input.show()
-        else:
+            self.epwm_output_label_mode1.hide()
+            self.epwm_output_combo_mode1.hide()
+        elif peripheral == "ePWM":
             self.timer_period_label.hide()
             self.timer_period_input.hide()
 
+            # Aggiunge "-" solo se non è già presente
+            if "-" not in [self.epwm_output_combo_mode1.itemText(i) for i in range(self.epwm_output_combo_mode1.count())]:
+                self.epwm_output_combo_mode1.insertItem(0, "-")
+
+            # Mostra la combo box e la etichetta
+            self.epwm_output_label_mode1.setText("ePWM that generates interrupt:")
+            self.epwm_output_label_mode1.show()
+            self.epwm_output_combo_mode1.show()
+
+            # Rimuove "-" immediatamente quando l'utente seleziona un'opzione diversa
+            self.epwm_output_combo_mode1.currentTextChanged.connect(self.handle_epwm_selection_mode1)
+
         self.update_save_button_state()
+
+
 
     def on_trigger_adc_changed(self, trigger):
 
         """
-        Show or hide the timer period field based on the chosen ADC trigger (mode 2 only).
+        Show or hide the timer period field and ePWM output field for Mode 2.
         """
 
         if trigger == "-":
             self.timer_period_label.hide()
             self.timer_period_input.hide()
+            self.epwm_output_label_mode2.hide()
+            self.epwm_output_combo_mode2.hide()
             return
 
+        # Rimuove "-" dalla combo box trigger ADC dopo la prima selezione
         if "-" in self.trigger_adc_combo.itemText(0):
-
-            # Remove the "-" option after the first selection
             self.trigger_adc_combo.removeItem(0)
 
         if trigger == "Timer":
             self.timer_period_label.show()
             self.timer_period_input.show()
-        else:
+            self.epwm_output_label_mode2.hide()
+            self.epwm_output_combo_mode2.hide()
+        elif trigger == "ePWM":
             self.timer_period_label.hide()
             self.timer_period_input.hide()
 
+            # Aggiunge "-" solo se non è già presente
+            if "-" not in [self.epwm_output_combo_mode2.itemText(i) for i in range(self.epwm_output_combo_mode2.count())]:
+                self.epwm_output_combo_mode2.insertItem(0, "-")
+
+            # Mostra la combo box e la etichetta
+            self.epwm_output_label_mode2.setText("ePWM trigger ADC:")
+            self.epwm_output_label_mode2.show()
+            self.epwm_output_combo_mode2.show()
+
+            # Rimuove "-" immediatamente quando l'utente seleziona un'opzione diversa
+            self.epwm_output_combo_mode2.currentTextChanged.connect(self.handle_epwm_selection_mode2)
+
         self.update_save_button_state()
+
+
+
+
+    def handle_epwm_selection_mode1(self, value):
+        """
+        Handles the selection of an ePWM option in Mode 1 and removes the '-' option.
+        """
+        if value != "-" and "-" in [self.epwm_output_combo_mode1.itemText(i) for i in range(self.epwm_output_combo_mode1.count())]:
+            self.epwm_output_combo_mode1.removeItem(0)
+
+    def handle_epwm_selection_mode2(self, value):
+        """
+        Handles the selection of an ePWM option in Mode 2 and removes the '-' option.
+        """
+        if value != "-" and "-" in [self.epwm_output_combo_mode2.itemText(i) for i in range(self.epwm_output_combo_mode2.count())]:
+            self.epwm_output_combo_mode2.removeItem(0)
+
+
+
+
+
+
+
+
+
 
 
     def update_save_button_state(self):
@@ -386,10 +479,10 @@ class ProjectConfigWindow(QDialog):
         """
         Enable or disable the Save button based on the current state of the fields.
         Conditions to enable:
-        Mode 1 + ePWM
-        Mode 1 + Timer + valid period (positive number)
-        Mode 2 + ePWM 
-        Mode 2 + Timer + valid period (positive number)
+        - Mode 1 + ePWM (Mode 1 Output)
+        - Mode 1 + Timer + valid period
+        - Mode 2 + ePWM (Mode 2 Output)
+        - Mode 2 + Timer + valid period
         """
 
         mode = self.mode_combo.currentText()
@@ -398,7 +491,7 @@ class ProjectConfigWindow(QDialog):
         timer_period = self.timer_period_input.text()
 
         if mode == "1":
-            if peripheral == "ePWM":
+            if peripheral == "ePWM" and self.epwm_output_combo_mode1.currentText() != "-":
                 self.save_button.setEnabled(True)
                 return
             elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
@@ -406,46 +499,49 @@ class ProjectConfigWindow(QDialog):
                 return
 
         elif mode == "2":
-            if trigger_adc == "ePWM":
+            if trigger_adc == "ePWM" and self.epwm_output_combo_mode2.currentText() != "-":
                 self.save_button.setEnabled(True)
                 return
             elif trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 self.save_button.setEnabled(True)
                 return
 
-        # Disable the button if no conditions are met
         self.save_button.setEnabled(False)
 
+
+
+
     def get_current_state(self):
-        
+    
         """
         Returns the current state based on the selected fields.
         Possible states:
-        - 1: Mode 1 + Timer + valid period (positive number)
-        - 2: Mode 1 + ePWM
-        - 3 : Mode 2 + Timer + valid period (positive number)
-        - 4: Mode 2 + ePWM 
+        - 1: Mode 1 + Timer + valid period
+        - 2: Mode 1 + ePWM (Mode 1 ePWM Output)
+        - 3: Mode 2 + Timer + valid period
+        - 4: Mode 2 + ePWM (Mode 2 ePWM Output)
         """
-        
+    
         mode = self.mode_combo.currentText()
         peripheral = self.peripheral_combo.currentText()
         trigger_adc = self.trigger_adc_combo.currentText()
         timer_period = self.timer_period_input.text()
 
         if mode == "1":
-            if peripheral == "ePWM":
-                return 2
-            elif peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
+            if peripheral == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 return 1
+            elif peripheral == "ePWM" and self.epwm_output_combo_mode1.currentText() != "-":
+                return 2
 
         elif mode == "2":
-            if trigger_adc == "ePWM":
-                return 4
-            elif trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
+            if trigger_adc == "Timer" and timer_period.isdigit() and int(timer_period) > 0:
                 return 3
+            elif trigger_adc == "ePWM" and self.epwm_output_combo_mode2.currentText() != "-":
+                return 4
 
-        # No valid status
+        # No valid state
         return None
+
 
     def cancel_and_close(self):
 
@@ -469,37 +565,70 @@ class ProjectConfigWindow(QDialog):
         event.accept()  # Close the window
 
     def save_and_close(self):
-
         """
         Save the selected configuration to a JSON file.
         """
 
+        # Ottieni il mode selezionato
         selected_mode = self.mode_combo.currentText()
         selected_peripheral = None
         selected_trigger_adc = None
         timer_period = None
+        selected_epwm_output_mode1 = None
+        selected_epwm_output_mode2 = None
 
+        # Verifica il mode e assegna i valori pertinenti
         if selected_mode == "1":
             selected_peripheral = self.peripheral_combo.currentText()
             if selected_peripheral == "Timer":
                 timer_period = self.timer_period_input.text()
+            elif selected_peripheral == "ePWM":
+                selected_epwm_output_mode1 = self.epwm_output_combo_mode1.currentText()
+                if selected_epwm_output_mode1 == "-":
+                    selected_epwm_output_mode1 = None  # Imposta a None se "-" è ancora selezionato
+    
         elif selected_mode == "2":
             selected_trigger_adc = self.trigger_adc_combo.currentText()
             if selected_trigger_adc == "Timer":
                 timer_period = self.timer_period_input.text()
+            elif selected_trigger_adc == "ePWM":
+                selected_epwm_output_mode2 = self.epwm_output_combo_mode2.currentText()
+                if selected_epwm_output_mode2 == "-":
+                    selected_epwm_output_mode2 = None  # Imposta a None se "-" è ancora selezionato
 
+        # Debug per verificare i valori recuperati
+        print(f"DEBUG: selected_mode = {selected_mode}")
+        print(f"DEBUG: selected_peripheral = {selected_peripheral}")
+        print(f"DEBUG: selected_trigger_adc = {selected_trigger_adc}")
+        print(f"DEBUG: timer_period = {timer_period}")
+        print(f"DEBUG: selected_epwm_output_mode1 = {selected_epwm_output_mode1}")
+        print(f"DEBUG: selected_epwm_output_mode2 = {selected_epwm_output_mode2}")
+
+        # Preparazione dei dati di configurazione
         config_data = {
             "mode": selected_mode,
-            "peripheral": selected_peripheral,
-            "trigger_adc": selected_trigger_adc,
-            "timer_period": timer_period,
+            "peripheral": selected_peripheral if selected_peripheral != "-" else None,
+            "trigger_adc": selected_trigger_adc if selected_trigger_adc != "-" else None,
+            "timer_period": timer_period if timer_period else None,
+            "epwm_output_mode1": selected_epwm_output_mode1,
+            "epwm_output_mode2": selected_epwm_output_mode2,
         }
 
-        # Save to project configuration file
+        # Debug per verificare i dati prima del salvataggio
+        print(f"DEBUG: config_data = {config_data}")
+
+        # Salva i dati usando la funzione save_project_config_file
         save_project_config_file(self.model, config_data)
 
-        # Closes with status "Accepted"
+        # Chiude la finestra con stato Accepted
         self.accept()
+
+
+
+
+
+
+
 
 
 class ConfigWindow(QDialog):
@@ -655,7 +784,6 @@ def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
 
 
 def save_project_config_file(model, config_data):
-
     """
     Saves the project configuration file for a specific project.
 
@@ -670,19 +798,19 @@ def save_project_config_file(model, config_data):
     ----------
     model       : The name of the project.
     config_data : The configuration data to be saved in the JSON file.
-
-    Returns
-    -------
-    -
-
     """
 
     project_dir = f"./{model}_project"
     config_file_path = os.path.join(project_dir, f"{model}_configuration.json")
-    config_file = ConfigFile(name=f"{model}_configuration", extension="json")
-    config_file.path = config_file_path
 
-    config_file.save(config_data)
+    # Creazione della directory del progetto se non esiste
+    if not os.path.exists(project_dir):
+        os.makedirs(project_dir)
+
+    # Scrittura del file di configurazione JSON
+    with open(config_file_path, "w") as config_file:
+        json.dump(config_data, config_file, indent=4)
+
 
 
 def open_config_window():
@@ -709,7 +837,6 @@ def open_config_window():
 
 
 def open_project_config_window(model):
-
     """
     Opens the project configuration window for a specific project.
     It collects and returns the configuration data if the user saves their changes.
@@ -732,16 +859,35 @@ def open_project_config_window(model):
     result = project_config_window.exec()  # Returns QDialog.Accepted or QDialog.Rejected
 
     if result == QDialog.Accepted:
+        # Build the configuration data
+        mode = project_config_window.mode_combo.currentText()
+        peripheral = project_config_window.peripheral_combo.currentText() if mode == "1" else None
+        trigger_adc = project_config_window.trigger_adc_combo.currentText() if mode == "2" else None
+        timer_period = project_config_window.timer_period_input.text() or None
+        epwm_output_mode1 = (
+            project_config_window.epwm_output_combo_mode1.currentText()
+            if mode == "1" and peripheral == "ePWM"
+            else None
+        )
+        epwm_output_mode2 = (
+            project_config_window.epwm_output_combo_mode2.currentText()
+            if mode == "2" and trigger_adc == "ePWM"
+            else None
+        )
 
+        # Return the complete configuration
         config_data = {
-            "mode": project_config_window.mode_combo.currentText(),
-            "peripheral": project_config_window.peripheral_combo.currentText() if project_config_window.mode_combo.currentText() == "1" else None,
-            "trigger_adc": project_config_window.trigger_adc_combo.currentText() if project_config_window.mode_combo.currentText() == "2" else None,
-            "timer_period": project_config_window.timer_period_input.text() or None,
+            "mode": mode,
+            "peripheral": peripheral,
+            "trigger_adc": trigger_adc,
+            "timer_period": timer_period,
+            "epwm_output_mode1": epwm_output_mode1,
+            "epwm_output_mode2": epwm_output_mode2,
         }
         return config_data
 
     return None
+
 
 
 def check_wsl_environment():
@@ -2613,4 +2759,3 @@ def create_project_structure(model, blocks):
 
     # Displays a message indicating that the project was created successfully
     QMessageBox.information(None, "Project Status", "Project successfully created")
-
