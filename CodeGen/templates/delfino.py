@@ -1317,6 +1317,7 @@ def create_cproject_file(model, ti_path, c2000_path, include):
                                     <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEBUGGING_MODEL.2023058995" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEBUGGING_MODEL" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEBUGGING_MODEL.SYMDEBUG__DWARF" valueType="enumerated"/>
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEFINE.928837016" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEFINE" valueType="definedSymbols">
                                         <listOptionValue builtIn="false" value="CPU1"/>
+                                        <listOptionValue builtIn="false" value="_LAUNCHXL_F28379D"/>
                                     </option>
                                     <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DISPLAY_ERROR_NUMBER.1888790822" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DIAG_WARNING.1826112291" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DIAG_WARNING" valueType="stringList">
@@ -1741,6 +1742,7 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
         "inputGPIOblk": ["inputGPIOblk.c", "button.c", "button.h"],
         "outputGPIOblk": ["outputGPIOblk.c", "ledDelfino.c", "led.h"],
         "epwmblk": ["epwmblk.c", "epwm.c", "epwm.h"],
+        "delfinoPlotblk": ["delfinoPlotblk.c", "sci.c", "sci.h"],
         "step": ["input.c"],
         "sinus": ["input.c"],
         "squareSignal": ["input.c"],
