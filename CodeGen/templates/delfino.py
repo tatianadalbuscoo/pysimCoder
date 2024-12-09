@@ -1777,7 +1777,7 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
     return found_files
 
 
-def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_output):
+def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_output, adc_block):
     """
     Dispatches the generation of `main.c` based on the provided state.
 
@@ -1813,7 +1813,7 @@ def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_o
     elif state == 2:
         generate_main_mode1_epwm(path_main, model, tbprd, pwm_output)
     elif state == 3:
-        generate_main_mode2_timer(path_main, model, timer_period)
+        generate_main_mode2_timer(path_main, model, timer_period, adc_block)
     elif state == 4:
         generate_main_mode2_epwm(path_main, model, tbprd, pwm_output)
 
@@ -1891,17 +1891,12 @@ def generate_main_mode1_timer(path_main, model, timer_period):
         f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
         f.write("    EDIS;\n\n")
         f.write("    InitCpuTimers();\n")
-        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, {timer_period});\n")
+        f.write(f"    ConfigCpuTimer(&CpuTimer0, 200, {timer_period});\n")
         f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
         f.write("    IER |= M_INT1;\n")
         f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
         f.write("    EINT;\n")
         f.write("    ERTM;\n\n")
-        f.write("    EALLOW;\n")
-        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
-        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
-        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
-        f.write("    EDIS;\n")
         f.write("}\n\n")
     
         f.write("double get_run_time(void)\n")
@@ -2066,13 +2061,6 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         f.write("    // Enable global interrupts and real-time interrupts\n")
         f.write("    EINT;\n")
         f.write("    ERTM;\n\n")
-
-        # Clock configuration for ePWM
-        f.write("    EALLOW;\n")
-        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
-        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
-        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
-        f.write("    EDIS;\n")
         f.write("}\n\n")
 
         f.write("double get_run_time(void)\n")
@@ -2086,7 +2074,7 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
 
 
 # state 3
-def generate_main_mode2_timer(path_main, model, timer_period):
+def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
 
     """
     Generates the main.c file for Mode 2 with Timer-based ADC triggering.
@@ -2108,6 +2096,12 @@ def generate_main_mode2_timer(path_main, model, timer_period):
 
     Tsamp = float(timer_period)/1000000
 
+    # Extract values
+    module = adc_block.get('module', None)
+    module_lower = module.lower() if module else None
+    soc = int(adc_block.get('soc', 0))  # Convert np.int64 to standard Python int
+    channel = int(adc_block.get('channel', 0))  # Convert np.int64 to standard Python int
+
     with open(path_main, 'w') as f:
         f.write("//###########################################################################\n")
         f.write("// FILE:   main.c\n")
@@ -2119,8 +2113,7 @@ def generate_main_mode2_timer(path_main, model, timer_period):
         # Function Prototypes
         f.write("// Function Prototypes\n")
         f.write("void setup(void);\n")
-        f.write("void ConfigureADC(void);\n")
-        f.write("__interrupt void adca1_isr(void);\n")
+        f.write(f"__interrupt void adc{module_lower}1_isr(void);\n")
         f.write("__interrupt void cpu_timer0_isr(void);\n")
         f.write("double get_run_time(void);\n")
         f.write("double get_Tsamp(void);\n\n")
@@ -2154,13 +2147,13 @@ def generate_main_mode2_timer(path_main, model, timer_period):
         # Timer ISR
         f.write("__interrupt void cpu_timer0_isr(void)\n{\n")
         f.write("    CpuTimer0.InterruptCount++;\n")
-        f.write("    AdcaRegs.ADCSOCFRC1.bit.SOC0 = 1; // Force start ADC conversion on SOC0\n")
+        f.write(f"    Adc{module_lower}Regs.ADCSOCFRC1.bit.SOC{soc} = 1; // Force start ADC conversion on SOC0\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1; // Acknowledge interrupt in PIE\n")
         f.write("}\n\n")
 
         # ADC ISR
         f.write("int cnt;\n")
-        f.write("__interrupt void adca1_isr(void)\n{\n")
+        f.write(f"__interrupt void adc{module_lower}1_isr(void)\n{{\n")
         f.write("    cnt++;\n")
         f.write("    AdcaResults[resultsIndex++] = AdcaResultRegs.ADCRESULT0;\n")
         f.write("    if (resultsIndex >= RESULTS_BUFFER_SIZE)\n")
@@ -2168,7 +2161,7 @@ def generate_main_mode2_timer(path_main, model, timer_period):
         f.write("        resultsIndex = 0;\n")
         f.write("        bufferFull = 1;\n")
         f.write("    }\n")
-        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n")
+        f.write(f"    Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n")
         f.write("    T += Tsamp;\n")
         f.write(f"    {model}_isr(T);\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
@@ -2188,37 +2181,14 @@ def generate_main_mode2_timer(path_main, model, timer_period):
         f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
         f.write("    PieVectTable.ADCA1_INT = &adca1_isr;\n")
         f.write("    EDIS;\n\n")
-        f.write("    ConfigureADC();\n\n")
         f.write("    InitCpuTimers();\n")
-        f.write(f"    ConfigCpuTimer(&CpuTimer0, 100, {timer_period});\n")
+        f.write(f"    ConfigCpuTimer(&CpuTimer0, 200, {timer_period});\n")
         f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
         f.write("    IER |= M_INT1;\n")
         f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n")
         f.write("    PieCtrlRegs.PIEIER1.bit.INTx1 = 1;\n")
         f.write("    EINT;\n")
         f.write("    ERTM;\n\n")
-        f.write("    EALLOW;\n")
-        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
-        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
-        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
-        f.write("    EDIS;\n")
-        f.write("}\n\n")
-
-        # ADC Configuration
-        f.write("void ConfigureADC(void)\n{\n")
-        f.write("    EALLOW;\n")
-        f.write("    AdcaRegs.ADCCTL2.bit.PRESCALE = 6;\n")
-        f.write("    AdcSetMode(ADC_ADCA, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);\n")
-        f.write("    AdcaRegs.ADCCTL1.bit.INTPULSEPOS = 1;\n")
-        f.write("    AdcaRegs.ADCCTL1.bit.ADCPWDNZ = 1;\n")
-        f.write("    DELAY_US(1000);\n")
-        f.write("    AdcaRegs.ADCSOC0CTL.bit.CHSEL = 0;\n")
-        f.write("    AdcaRegs.ADCSOC0CTL.bit.ACQPS = 14;\n")
-        f.write("    AdcaRegs.ADCSOC0CTL.bit.TRIGSEL = 0;\n")
-        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = 0;\n")
-        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;\n")
-        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n")
-        f.write("    EDIS;\n")
         f.write("}\n\n")
 
         # Helper Functions
@@ -2412,10 +2382,6 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("    CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;\n")
         f.write("    EDIS;\n\n")
         f.write("    EALLOW;\n")
-        f.write("    // Set EPWMCLKDIV to 0 to have the ePWM input clock run at full PLLSYSCLK (100 MHz).\n")
-        f.write("    // Without this, the ePWM clock frequency is divided by 2 (resulting in 50 MHz).\n")
-        f.write("    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;\n")
-        f.write("    EDIS;\n")
         f.write("}\n\n")
     
         # Loop Function
@@ -2554,53 +2520,33 @@ def find_matching_pwm_output(blocks, target_function, epwm_output_mode1):
 
 def extract_adc_parameters(blocks, target_function):
 
-    """
-    Extracts ADC parameters from blocks matching the target function.
-
-    This function scans a list of blocks to identify those with a specific target function 
-    and extracts their ADC module and channel parameters. If an ADC module 'A'/'a' with 
-    channel 0 is found, the function immediately returns `None`. Otherwise, it returns 
-    a list of dictionaries containing the extracted parameters.
-
-    Example Call:
-    -------------
-    adc_parameters = extract_adc_parameters(blocks, "target_function_name")
-
-    Parameters:
-    -----------
-    blocks          : A list of blocks, each containing attributes such as `fcn`, `intPar`, and `str`.
-    target_function : The function name to match within the blocks.
-
-    Returns:
-    --------
-    list or None
-        - A list of dictionaries containing:
-            - "module" : str or None
-                The ADC module identifier (e.g., 'A', 'B', etc.), or None if unavailable.
-            - "channel" : int or None
-                The ADC channel number, or None if unavailable.
-        - Returns `None` immediately if the module is 'A'/'a' with channel 0.
-    """
-
-    extracted_blocks = []
+    matching_blocks = []
 
     for block in blocks:
+        # Check if the block matches the target function
         if block.fcn == target_function:
+            # Extract parameters
             adc_module = block.str if len(block.str) > 0 else None
             adc_channel = block.intPar[0] if len(block.intPar) > 0 else None
-            
-            # Check if the ADC combination 'A'/'a' and channel 0 is present
-            if adc_module and adc_channel is not None:
-                if adc_module.lower() == 'a' and adc_channel == 0:
-                    return None
-            
-            # Adds the dictionary with parameters
-            extracted_blocks.append({
-                "module": adc_module,
-                "channel": adc_channel
-            })
+            soc = block.intPar[1] if len(block.intPar) > 0 else None
+            generate_interrupt = block.intPar[2] if len(block.intPar) > 0 else None
 
-    return extracted_blocks
+            # Filter for blocks with generateInterrupt == 1
+            if generate_interrupt == 1:
+                matching_blocks.append({
+                    "module": adc_module,
+                    "soc": soc,
+                    "channel": adc_channel
+                })
+
+    # Handle return cases
+    if len(matching_blocks) == 0:
+        return -1  # No matching blocks
+    elif len(matching_blocks) > 1:
+        return -2  # Multiple matching blocks
+    else:
+        return matching_blocks[0]  # Single matching block
+
 
 
 def create_project_structure(model, blocks):
@@ -2737,7 +2683,7 @@ def create_project_structure(model, blocks):
                 shutil.rmtree(project_dir)
             return
         
-        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output)
+        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output, None)
 
 
 
@@ -2754,20 +2700,36 @@ def create_project_structure(model, blocks):
             return
 
 
-        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output)
+        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output, None)
         
     if state == 3:
-        adc_blocks = extract_adc_parameters(blocks, 'adcblk')
-        if (adc_blocks == None):
-            QMessageBox.warning(None, "Error", f"Module A, channel 0 is already busy managing synchronization. Project {model} has been cancelled.")
+        # Call the function to extract the ADC block
+        result = extract_adc_parameters(blocks, 'adcblk')
+
+        # Handle the result based on the return value
+        if result == -1:
+            QMessageBox.warning(None, "Error", f"No ADC block with generateInterrupt == 1 was found. Project {model} has been cancelled.")
             project_dir = f"./{model}_project"
             if os.path.exists(project_dir):
                 shutil.rmtree(project_dir)
-            return  
+            return
 
-    if state == 1 or state == 3:
+        elif result == -2:
+            QMessageBox.warning(None, "Error", f"Multiple ADC blocks with generateInterrupt == 1 were found. Project {model} has been cancelled.")
+            project_dir = f"./{model}_project"
+            if os.path.exists(project_dir):
+                shutil.rmtree(project_dir)
+            return
+ 
+    if state == 1:
         timer_period = config_data.get("timer_period")
-        dispatch_main_generation(state, main_file, model, timer_period, None, None)
+        dispatch_main_generation(state, main_file, model, timer_period, None, None, None)
+
+    if state == 3:
+        timer_period = config_data.get("timer_period")
+        print(result)
+        dispatch_main_generation(state, main_file, model, timer_period, None, None, result)
+
 
     find_and_copy_files(functions_name,  CodeGen_path, src_dir, include_dir)
 

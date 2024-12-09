@@ -21,6 +21,7 @@ void ADC_SetMode(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, 
 
         AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = soc;   // Set interrupt for SOC
         AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;       // Enable interrupt
+        AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
     }
     else if (adc == ADC_ADCB)
     {
@@ -37,6 +38,7 @@ void ADC_SetMode(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, 
 
         AdcbRegs.ADCINTSEL1N2.bit.INT1SEL = soc;
         AdcbRegs.ADCINTSEL1N2.bit.INT1E = 1;
+        AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
     }
     else if (adc == ADC_ADCC)
     {
@@ -53,6 +55,7 @@ void ADC_SetMode(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, 
 
         AdccRegs.ADCINTSEL1N2.bit.INT1SEL = soc;
         AdccRegs.ADCINTSEL1N2.bit.INT1E = 1;
+        AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
     }
     else if (adc == ADC_ADCD)
     {
@@ -69,6 +72,7 @@ void ADC_SetMode(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, 
 
         AdcdRegs.ADCINTSEL1N2.bit.INT1SEL = soc;
         AdcdRegs.ADCINTSEL1N2.bit.INT1E = 1;
+        AdcdRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
     }
 }
 
