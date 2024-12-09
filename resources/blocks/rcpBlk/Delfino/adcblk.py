@@ -1,8 +1,8 @@
 from supsisim.RCPblk import RCPblk
 
-def adcblk(pout, adc, channel, SOC):
+def adcblk(pout, adc, channel, SOC, generateInterrupt):
     """
-    Call:   adcblk(pout, adc, channel, SOC)
+    Call:   adcblk(pout, adc, channel, SOC, generateInterrupt)
 
     Parameters
     ----------
@@ -34,5 +34,5 @@ def adcblk(pout, adc, channel, SOC):
     if not isinstance(SOC, int) or SOC < 0:
         raise ValueError(f"SOC must be a non-negative integer; received {SOC}.")
 
-    blk = RCPblk('adcblk', [], pout, [0,0], 0, [], [channel, SOC], adc)
+    blk = RCPblk('adcblk', [], pout, [0,0], 0, [], [channel, SOC, generateInterrupt], adc)
     return blk

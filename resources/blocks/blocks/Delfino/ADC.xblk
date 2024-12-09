@@ -6,6 +6,6 @@
   "stin": 0,
   "stout": 0,
   "icon": "AD",
-  "params": "adcblk|ADC:'A'|channel:0|SOC:0",
-  "help": "Parameters:\nADC: The ADC module as a string (\"A\", \"B\", \"C\", \"D\")\nchannel: Channel number (integer from 0 to 5).\nSOC: SOC number for ADC (e.g., 0, 1, etc.).\nExample: Configure ADC module \"A\", select channel 0, and use SOC 0 for conversion."
+  "params": "adcblk|ADC:'A'|channel:0|SOC:0|generate Interrupt:0",
+  "help": "Parameters:\nADC: The ADC module as a string (\"A\", \"B\", \"C\", \"D\")\nchannel: Channel number (integer from 0 to 5).\nSOC: SOC number for ADC (e.g., 0, 1, etc.).\nGenerate interrupt: If this adc generate an interrupt (1 = true; 0 = false)\nExample: Configure ADC module \"A\", select channel 0, and use SOC 0 for conversion."
 }
