@@ -1214,7 +1214,7 @@ def create_project_file(model, c2000_path):
         file.write(project_content)
 
 
-def create_cproject_file(model, ti_path, c2000_path, include):
+def create_cproject_file(model, ti_path, c2000_path, include, state):
 
     """ Creates a .cproject file in XML format for a given project.
 
@@ -1318,6 +1318,7 @@ def create_cproject_file(model, ti_path, c2000_path, include):
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEFINE.928837016" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEFINE" valueType="definedSymbols">
                                         <listOptionValue builtIn="false" value="CPU1"/>
                                         <listOptionValue builtIn="false" value="_LAUNCHXL_F28379D"/>
+                                        <listOptionValue builtIn="false" value="STATE={state}"/>
                                     </option>
                                     <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DISPLAY_ERROR_NUMBER.1888790822" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DIAG_WARNING.1826112291" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DIAG_WARNING" valueType="stringList">
@@ -2791,7 +2792,7 @@ def create_project_structure(model, blocks):
     # create the .project, .cproject, .ccsproject files
     create_ccsproject_file(model)
     create_project_file(model, c2000Ware_path)
-    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path)
+    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path, state)
 
     # Displays a message indicating that the project was created successfully
     QMessageBox.information(None, "Project Status", "Project successfully created")

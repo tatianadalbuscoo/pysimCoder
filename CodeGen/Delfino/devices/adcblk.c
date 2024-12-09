@@ -33,12 +33,15 @@ static void inout(python_block* block)
 {
     char* adc_module = (char*)block->str;
     int soc = block->intPar[1];
-    //double* y = block->y[0];         
+    double* y = block->y[0];
 
     // Read ADC value
     int adcResult = ADC_ReadSOC(adc_module, soc);
 
+    *y = (double)adcResult;
+
 }
+
 
 static void end(python_block* block)
 {

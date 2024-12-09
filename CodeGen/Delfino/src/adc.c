@@ -136,3 +136,4 @@ int ADC_ReadSOC(const char* adc_module, int soc)
 
     return -1;
 }
+

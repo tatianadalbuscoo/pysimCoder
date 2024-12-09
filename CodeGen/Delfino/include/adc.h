@@ -22,3 +22,4 @@ void ADC_Init(const char* adc_module, int channel, int soc);
 int ADC_ReadSOC(const char* adc_module, int soc);
 
 #endif // ADC_H
+
