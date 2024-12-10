@@ -2,79 +2,70 @@
 #include <string.h>
 
 // Configure an ADC module with resolution, signal mode, channel, and specific SOC
+#include "adc.h"
+#include <string.h>
+
+// Configure an ADC module with resolution, signal mode, channel, and specific SOC
 void ADC_SetMode(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, int soc)
 {
     if (soc < 0 || soc > 15) return;
 
+    volatile struct ADC_REGS* adc_regs;
+
+    // Map the ADC module to the correct register
     if (adc == ADC_ADCA)
-    {
-        AdcaRegs.ADCCTL2.bit.PRESCALE = 6;  // Clock prescaler
-        AdcaRegs.ADCCTL2.bit.RESOLUTION = (resolution == ADC_RESOLUTION_12BIT) ? 0 : 1;
-        AdcaRegs.ADCCTL2.bit.SIGNALMODE = (signalMode == ADC_SIGNALMODE_SINGLE) ? 0 : 1;
-
-        AdcaRegs.ADCCTL1.bit.INTPULSEPOS = 1; // Configure interrupt pulse position
-        AdcaRegs.ADCCTL1.bit.ADCPWDNZ = 1;    // Power up ADC module
-
-        (&AdcaRegs.ADCSOC0CTL)[soc].bit.CHSEL = channel;   // Select input channel
-        (&AdcaRegs.ADCSOC0CTL)[soc].bit.ACQPS = 14;        // Set acquisition time
-        (&AdcaRegs.ADCSOC0CTL)[soc].bit.TRIGSEL = 0;       // Software trigger
-
-        AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = soc;   // Set interrupt for SOC
-        AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;       // Enable interrupt
-        AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
-    }
+        adc_regs = &AdcaRegs;
     else if (adc == ADC_ADCB)
-    {
-        AdcbRegs.ADCCTL2.bit.PRESCALE = 6;
-        AdcbRegs.ADCCTL2.bit.RESOLUTION = (resolution == ADC_RESOLUTION_12BIT) ? 0 : 1;
-        AdcbRegs.ADCCTL2.bit.SIGNALMODE = (signalMode == ADC_SIGNALMODE_SINGLE) ? 0 : 1;
-
-        AdcbRegs.ADCCTL1.bit.INTPULSEPOS = 1;
-        AdcbRegs.ADCCTL1.bit.ADCPWDNZ = 1;
-
-        (&AdcbRegs.ADCSOC0CTL)[soc].bit.CHSEL = channel;
-        (&AdcbRegs.ADCSOC0CTL)[soc].bit.ACQPS = 14;
-        (&AdcbRegs.ADCSOC0CTL)[soc].bit.TRIGSEL = 0;
-
-        AdcbRegs.ADCINTSEL1N2.bit.INT1SEL = soc;
-        AdcbRegs.ADCINTSEL1N2.bit.INT1E = 1;
-        AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
-    }
+        adc_regs = &AdcbRegs;
     else if (adc == ADC_ADCC)
-    {
-        AdccRegs.ADCCTL2.bit.PRESCALE = 6;
-        AdccRegs.ADCCTL2.bit.RESOLUTION = (resolution == ADC_RESOLUTION_12BIT) ? 0 : 1;
-        AdccRegs.ADCCTL2.bit.SIGNALMODE = (signalMode == ADC_SIGNALMODE_SINGLE) ? 0 : 1;
-
-        AdccRegs.ADCCTL1.bit.INTPULSEPOS = 1;
-        AdccRegs.ADCCTL1.bit.ADCPWDNZ = 1;
-
-        (&AdccRegs.ADCSOC0CTL)[soc].bit.CHSEL = channel;
-        (&AdccRegs.ADCSOC0CTL)[soc].bit.ACQPS = 14;
-        (&AdccRegs.ADCSOC0CTL)[soc].bit.TRIGSEL = 0;
-
-        AdccRegs.ADCINTSEL1N2.bit.INT1SEL = soc;
-        AdccRegs.ADCINTSEL1N2.bit.INT1E = 1;
-        AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
-    }
+        adc_regs = &AdccRegs;
     else if (adc == ADC_ADCD)
-    {
-        AdcdRegs.ADCCTL2.bit.PRESCALE = 6;
-        AdcdRegs.ADCCTL2.bit.RESOLUTION = (resolution == ADC_RESOLUTION_12BIT) ? 0 : 1;
-        AdcdRegs.ADCCTL2.bit.SIGNALMODE = (signalMode == ADC_SIGNALMODE_SINGLE) ? 0 : 1;
+        adc_regs = &AdcdRegs;
+    else
+        return;
 
-        AdcdRegs.ADCCTL1.bit.INTPULSEPOS = 1;
-        AdcdRegs.ADCCTL1.bit.ADCPWDNZ = 1;
+    // Configure ADC module settings
+    adc_regs->ADCCTL2.bit.PRESCALE = 6;  // Clock prescaler
+    adc_regs->ADCCTL2.bit.RESOLUTION = (resolution == ADC_RESOLUTION_12BIT) ? 0 : 1;
+    adc_regs->ADCCTL2.bit.SIGNALMODE = (signalMode == ADC_SIGNALMODE_SINGLE) ? 0 : 1;
 
-        (&AdcdRegs.ADCSOC0CTL)[soc].bit.CHSEL = channel;
-        (&AdcdRegs.ADCSOC0CTL)[soc].bit.ACQPS = 14;
-        (&AdcdRegs.ADCSOC0CTL)[soc].bit.TRIGSEL = 0;
+    adc_regs->ADCCTL1.bit.INTPULSEPOS = 1; // Interrupt pulse at end of conversion
+    adc_regs->ADCCTL1.bit.ADCPWDNZ = 1;    // Power up ADC module
 
-        AdcdRegs.ADCINTSEL1N2.bit.INT1SEL = soc;
-        AdcdRegs.ADCINTSEL1N2.bit.INT1E = 1;
-        AdcdRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
+    // Configure the SOC for the given channel
+    (&adc_regs->ADCSOC0CTL)[soc].bit.CHSEL = channel;   // Select input channel
+    (&adc_regs->ADCSOC0CTL)[soc].bit.ACQPS = 14;        // Set acquisition time
+    (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = 0;       // Software trigger
+
+    // Dynamically assign an interrupt (INT1 or INT2) based on availability
+    if (!adc_regs->ADCINTSEL1N2.bit.INT1E) {
+        adc_regs->ADCINTSEL1N2.bit.INT1SEL = soc;  // Map SOC to ADCINT1
+        adc_regs->ADCINTSEL1N2.bit.INT1E = 1;      // Enable ADCINT1
     }
+    else if (!adc_regs->ADCINTSEL1N2.bit.INT2E) {
+        adc_regs->ADCINTSEL1N2.bit.INT2SEL = soc;  // Map SOC to ADCINT2
+        adc_regs->ADCINTSEL1N2.bit.INT2E = 1;      // Enable ADCINT2
+    }
+    else if (!adc_regs->ADCINTSEL3N4.bit.INT3E) {
+        adc_regs->ADCINTSEL3N4.bit.INT3SEL = soc;  // Map SOC to ADCINT3
+        adc_regs->ADCINTSEL3N4.bit.INT3E = 1;      // Enable ADCINT3
+    }
+    else if (!adc_regs->ADCINTSEL3N4.bit.INT4E) {
+        adc_regs->ADCINTSEL3N4.bit.INT4SEL = soc;  // Map SOC to ADCINT4
+        adc_regs->ADCINTSEL3N4.bit.INT4E = 1;      // Enable ADCINT4
+    }
+    else {
+        // If both interrupts are in use, return or handle error
+        return;
+    }
+
+    // Clear any existing interrupt flags
+    adc_regs->ADCINTFLGCLR.bit.ADCINT1 = 1;
+    adc_regs->ADCINTFLGCLR.bit.ADCINT2 = 1;
+    adc_regs->ADCINTFLGCLR.bit.ADCINT3 = 1;
+    adc_regs->ADCINTFLGCLR.bit.ADCINT4 = 1;
 }
+
 
 // Initialize an ADC module
 void ADC_Init(const char* adc_module, int channel, int soc)
@@ -104,40 +95,72 @@ void ADC_Init(const char* adc_module, int channel, int soc)
     EDIS;
 }
 
-// Read the result of a specific SOC
 int ADC_ReadSOC(const char* adc_module, int soc)
 {
-    if (soc < 0 || soc > 15) return -1;
+    if (soc < 0 || soc > 15)
+    {
+        return -1;
+    }
 
+    volatile struct ADC_REGS* adc_regs;
+    volatile Uint16* adc_result;
+
+    // Map ADC module
     if (strcmp(adc_module, "A") == 0)
     {
-        AdcaRegs.ADCSOCFRC1.all = 1 << soc;       // Trigger SOC for ADC-A
-        while (!AdcaRegs.ADCINTFLG.bit.ADCINT1);  // Wait for conversion to complete
-        AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;    // Clear the interrupt flag
-        return (&AdcaResultRegs.ADCRESULT0)[soc]; // Return conversion result
+        adc_regs = &AdcaRegs;
+        adc_result = &AdcaResultRegs.ADCRESULT0;
     }
     else if (strcmp(adc_module, "B") == 0)
     {
-        AdcbRegs.ADCSOCFRC1.all = 1 << soc;       // Trigger SOC for ADC-B
-        while (!AdcbRegs.ADCINTFLG.bit.ADCINT1);
-        AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
-        return (&AdcbResultRegs.ADCRESULT0)[soc];
+        adc_regs = &AdcbRegs;
+        adc_result = &AdcbResultRegs.ADCRESULT0;
     }
     else if (strcmp(adc_module, "C") == 0)
     {
-        AdccRegs.ADCSOCFRC1.all = 1 << soc;       // Trigger SOC for ADC-C
-        while (!AdccRegs.ADCINTFLG.bit.ADCINT1);
-        AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
-        return (&AdccResultRegs.ADCRESULT0)[soc];
+        adc_regs = &AdccRegs;
+        adc_result = &AdccResultRegs.ADCRESULT0;
     }
     else if (strcmp(adc_module, "D") == 0)
     {
-        AdcdRegs.ADCSOCFRC1.all = 1 << soc;       // Trigger SOC for ADC-D
-        while (!AdcdRegs.ADCINTFLG.bit.ADCINT1);
-        AdcdRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
-        return (&AdcdResultRegs.ADCRESULT0)[soc];
+        adc_regs = &AdcdRegs;
+        adc_result = &AdcdResultRegs.ADCRESULT0;
+    }
+    else
+    {
+        return -1;  // Invalid ADC module
     }
 
-    return -1;
+    adc_regs->ADCSOCFRC1.all = 1 << soc;
+
+    // Check which interrupt is linked to this SOC
+    if (adc_regs->ADCINTSEL1N2.bit.INT1SEL == soc && adc_regs->ADCINTSEL1N2.bit.INT1E)
+    {
+        while (!adc_regs->ADCINTFLG.bit.ADCINT1);
+        adc_regs->ADCINTFLGCLR.bit.ADCINT1 = 1;
+    }
+    else if (adc_regs->ADCINTSEL1N2.bit.INT2SEL == soc && adc_regs->ADCINTSEL1N2.bit.INT2E)
+    {
+
+        while (!adc_regs->ADCINTFLG.bit.ADCINT2);
+        adc_regs->ADCINTFLGCLR.bit.ADCINT2 = 1;
+    }
+    else if (adc_regs->ADCINTSEL3N4.bit.INT3SEL == soc && adc_regs->ADCINTSEL3N4.bit.INT3E)
+    {
+        while (!adc_regs->ADCINTFLG.bit.ADCINT3);
+        adc_regs->ADCINTFLGCLR.bit.ADCINT3 = 1;
+    }
+    else if (adc_regs->ADCINTSEL3N4.bit.INT4SEL == soc && adc_regs->ADCINTSEL3N4.bit.INT4E)
+    {
+        while (!adc_regs->ADCINTFLG.bit.ADCINT4);
+        adc_regs->ADCINTFLGCLR.bit.ADCINT4 = 1;
+    }
+    else
+    {
+        return -1;  // SOC not linked to any interrupt
+    }
+
+    return adc_result[soc];
 }
+
 
