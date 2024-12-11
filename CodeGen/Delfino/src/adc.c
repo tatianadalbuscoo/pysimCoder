@@ -95,35 +95,30 @@ void ADC_Init(const char* adc_module, int channel, int soc)
     EDIS;
 }
 
-int ADC_ReadSOC(const char* adc_module, int soc)
+int ADC_ReadSOC(const char* adc_module, int soc, int generateInterrupt)
 {
     if (soc < 0 || soc > 15)
     {
         return -1;
     }
 
-    volatile struct ADC_REGS* adc_regs;
     volatile Uint16* adc_result;
 
     // Map ADC module
     if (strcmp(adc_module, "A") == 0)
     {
-        adc_regs = &AdcaRegs;
         adc_result = &AdcaResultRegs.ADCRESULT0;
     }
     else if (strcmp(adc_module, "B") == 0)
     {
-        adc_regs = &AdcbRegs;
         adc_result = &AdcbResultRegs.ADCRESULT0;
     }
     else if (strcmp(adc_module, "C") == 0)
     {
-        adc_regs = &AdccRegs;
         adc_result = &AdccResultRegs.ADCRESULT0;
     }
     else if (strcmp(adc_module, "D") == 0)
     {
-        adc_regs = &AdcdRegs;
         adc_result = &AdcdResultRegs.ADCRESULT0;
     }
     else
@@ -131,6 +126,7 @@ int ADC_ReadSOC(const char* adc_module, int soc)
         return -1;  // Invalid ADC module
     }
 
+#if STATE == 1 || STATE == 2
     adc_regs->ADCSOCFRC1.all = 1 << soc;
 
     // Check which interrupt is linked to this SOC
@@ -159,8 +155,90 @@ int ADC_ReadSOC(const char* adc_module, int soc)
     {
         return -1;  // SOC not linked to any interrupt
     }
-
     return adc_result[soc];
+#endif
+
+#if STATE == 3
+    return adc_result[soc];
+#endif
+
 }
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void ADC_SetMode_main3(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, int soc, int generate_interrupt)
+{
+    if (soc < 0 || soc > 15) return;
+
+    volatile struct ADC_REGS* adc_regs;
+
+    // Map the ADC module to the correct register
+    if (adc == ADC_ADCA)
+        adc_regs = &AdcaRegs;
+    else if (adc == ADC_ADCB)
+        adc_regs = &AdcbRegs;
+    else if (adc == ADC_ADCC)
+        adc_regs = &AdccRegs;
+    else if (adc == ADC_ADCD)
+        adc_regs = &AdcdRegs;
+    else
+        return;
+
+    // Configure ADC module settings
+    adc_regs->ADCCTL2.bit.PRESCALE = 6;  // Clock prescaler
+    adc_regs->ADCCTL2.bit.RESOLUTION = (resolution == ADC_RESOLUTION_12BIT) ? 0 : 1;
+    adc_regs->ADCCTL2.bit.SIGNALMODE = (signalMode == ADC_SIGNALMODE_SINGLE) ? 0 : 1;
+
+    adc_regs->ADCCTL1.bit.INTPULSEPOS = 1; // Interrupt pulse at end of conversion
+    adc_regs->ADCCTL1.bit.ADCPWDNZ = 1;    // Power up ADC module
+
+    // Configure the SOC for the given channel
+    (&adc_regs->ADCSOC0CTL)[soc].bit.CHSEL = channel;   // Select input channel
+    (&adc_regs->ADCSOC0CTL)[soc].bit.ACQPS = 14;        // Set acquisition time
+    (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = 1;       // trigger da timer 0
+
+    // Dynamically assign an interrupt (INT1 or INT2) based on availability
+    if (generate_interrupt == 1) {
+        adc_regs->ADCINTSEL1N2.bit.INT1SEL = soc;  // Map SOC to ADCINT1
+        adc_regs->ADCINTSEL1N2.bit.INT1E = 1;      // Enable ADCINT1
+    }
+
+    // Clear any existing interrupt flags
+    adc_regs->ADCINTFLGCLR.bit.ADCINT1 = 1;
+
+}
+
+
+// Initialize an ADC module
+void ADC_Init_main3(const char* adc_module, int channel, int soc, int generate_interrurpt)
+{
+    int adc_module_number;
+
+    if (adc_module == NULL || soc < 0 || soc > 15) return;
+
+    if (strcmp(adc_module, "A") == 0)
+        adc_module_number = ADC_ADCA;
+    else if (strcmp(adc_module, "B") == 0)
+        adc_module_number = ADC_ADCB;
+    else if (strcmp(adc_module, "C") == 0)
+        adc_module_number = ADC_ADCC;
+    else if (strcmp(adc_module, "D") == 0)
+        adc_module_number = ADC_ADCD;
+    else
+        return;
+
+    EALLOW;
+
+    ADC_SetMode_main3(adc_module_number, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE, channel, soc, generate_interrurpt);
+
+    // Delay to allow ADC to power up
+    DELAY_US(1000);
+
+    EDIS;
+}
+
 
 

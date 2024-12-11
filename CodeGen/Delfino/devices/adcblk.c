@@ -24,21 +24,31 @@ static void init(python_block* block)
     char* adc_module = (char*)block->str;
     int channel = block->intPar[0];
     int soc = block->intPar[1];
+    int generateInterrupt = block->intPar[2]; // Se il blocco genera interrupt
+
+#if STATE == 1 || STATE ==2
 
     // Initialize ADC
     ADC_Init(adc_module, channel, soc);
+#endif   
+
+#if STATE == 3
+    ADC_Init_main3(adc_module, channel, soc, generateInterrupt);
+#endif
+
 }
 
 static void inout(python_block* block)
 {
     char* adc_module = (char*)block->str;
     int soc = block->intPar[1];
+    int generateInterrupt = block->intPar[2]; // Se il blocco genera interrupt
     double* y = block->y[0];
 
     // Read ADC value
-    int adcResult = ADC_ReadSOC(adc_module, soc);
-
+    int adcResult = ADC_ReadSOC(adc_module, soc, generateInterrupt);
     *y = (double)adcResult;
+
 
 }
 

@@ -2102,6 +2102,16 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
     soc = int(adc_block.get('soc', 0))  # Convert np.int64 to standard Python int
     channel = int(adc_block.get('channel', 0))  # Convert np.int64 to standard Python int
 
+    if(module == 'A'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx1 = 1;"
+    if(module == 'B'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx2 = 1;"
+    if(module == 'C'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx3 = 1;"
+    if(module == 'D'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx4 = 1;"
+
+
     with open(path_main, 'w') as f:
         f.write("//###########################################################################\n")
         f.write("// FILE:   main.c\n")
@@ -2124,7 +2134,7 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
 
         # Globals
         f.write("// Globals\n")
-        f.write("Uint16 AdcaResults[RESULTS_BUFFER_SIZE];\n")
+        f.write("Uint16 AdcResults[RESULTS_BUFFER_SIZE];\n")
         f.write("Uint16 resultsIndex = 0;\n")
         f.write("volatile Uint16 bufferFull = 0;\n")
         f.write(f"static double Tsamp = {Tsamp};  // Sample interval\n")
@@ -2147,7 +2157,7 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
         # Timer ISR
         f.write("__interrupt void cpu_timer0_isr(void)\n{\n")
         f.write("    CpuTimer0.InterruptCount++;\n")
-        f.write(f"    Adc{module_lower}Regs.ADCSOCFRC1.bit.SOC{soc} = 1; // Force start ADC conversion on SOC0\n")
+        #f.write(f"    Adc{module_lower}Regs.ADCSOCFRC1.bit.SOC{soc} = 1; // Force start ADC conversion on SOC0\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1; // Acknowledge interrupt in PIE\n")
         f.write("}\n\n")
 
@@ -2155,7 +2165,7 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
         f.write("int cnt;\n")
         f.write(f"__interrupt void adc{module_lower}1_isr(void)\n{{\n")
         f.write("    cnt++;\n")
-        f.write("    AdcaResults[resultsIndex++] = AdcaResultRegs.ADCRESULT0;\n")
+        f.write(f"    AdcResults[resultsIndex++] = Adc{module_lower}ResultRegs.ADCRESULT{soc};\n")
         f.write("    if (resultsIndex >= RESULTS_BUFFER_SIZE)\n")
         f.write("    {\n")
         f.write("        resultsIndex = 0;\n")
@@ -2179,14 +2189,14 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
         f.write("    InitPieVectTable();\n\n")
         f.write("    EALLOW;\n")
         f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
-        f.write("    PieVectTable.ADCA1_INT = &adca1_isr;\n")
+        f.write(f"    PieVectTable.ADC{module}1_INT = &adc{module_lower}1_isr;\n")
         f.write("    EDIS;\n\n")
         f.write("    InitCpuTimers();\n")
         f.write(f"    ConfigCpuTimer(&CpuTimer0, 200, {timer_period});\n")
         f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
         f.write("    IER |= M_INT1;\n")
         f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n")
-        f.write("    PieCtrlRegs.PIEIER1.bit.INTx1 = 1;\n")
+        f.write(f"    {interrupt}\n")
         f.write("    EINT;\n")
         f.write("    ERTM;\n\n")
         f.write("}\n\n")
@@ -2708,14 +2718,14 @@ def create_project_structure(model, blocks):
 
         # Handle the result based on the return value
         if result == -1:
-            QMessageBox.warning(None, "Error", f"No ADC block with generateInterrupt == 1 was found. Project {model} has been cancelled.")
+            QMessageBox.warning(None, "Error", f"No ADC block with generate Interrupt == 1 was found. Project {model} has been cancelled.")
             project_dir = f"./{model}_project"
             if os.path.exists(project_dir):
                 shutil.rmtree(project_dir)
             return
 
         elif result == -2:
-            QMessageBox.warning(None, "Error", f"Multiple ADC blocks with generateInterrupt == 1 were found. Project {model} has been cancelled.")
+            QMessageBox.warning(None, "Error", f"Multiple ADC blocks with generate Interrupt == 1 were found. Project {model} has been cancelled.")
             project_dir = f"./{model}_project"
             if os.path.exists(project_dir):
                 shutil.rmtree(project_dir)

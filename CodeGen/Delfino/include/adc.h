@@ -19,7 +19,9 @@
 
 void ADC_SetMode(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, int soc);
 void ADC_Init(const char* adc_module, int channel, int soc);
-int ADC_ReadSOC(const char* adc_module, int soc);
+int ADC_ReadSOC(const char* adc_module, int soc, int generateInterrupt);
+void ADC_SetMode_main3(Uint16 adc, Uint16 resolution, Uint16 signalMode, int channel, int soc, int generate_interrupt);
+void ADC_Init_main3(const char* adc_module, int channel, int soc, int generate_interrurpt);
 
 #endif // ADC_H
 
