@@ -664,12 +664,13 @@ class ConfigWindow(QDialog):
 
         super().__init__()
         self.setWindowTitle("Configuration")
-        self.resize(800, 200)
+        self.resize(800, 250)
 
         # Load existing configuration
         config = general_config.load()
         self.ti_path = config.get('ti_path', '')
         self.c2000Ware_path = config.get('c2000Ware_path', '')
+        self.compiler_version = config.get('compiler_version', 'ti-cgt-c2000_22.6.1.LTS')
 
         self.init_ui()
 
@@ -701,6 +702,19 @@ class ConfigWindow(QDialog):
         c2000_layout.addWidget(self.c2000_input)
         c2000_layout.addWidget(c2000_browse)
 
+        # Dropdown for selecting the compiler
+        compiler_layout = QHBoxLayout()
+        compiler_label = QLabel("Select Compiler Version:")
+        self.compiler_dropdown = QComboBox()
+        self.compiler_dropdown.addItems([
+            "ti-cgt-c2000_22.6.1.LTS",
+            "ti-cgt-c2000_21.6.0.LTS"
+        ])
+        self.compiler_dropdown.setCurrentText(self.compiler_version)
+        self.compiler_dropdown.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        compiler_layout.addWidget(compiler_label)
+        compiler_layout.addWidget(self.compiler_dropdown)
+
         # Save button
         button_layout = QHBoxLayout()
         save_button = QPushButton("Save")
@@ -714,6 +728,7 @@ class ConfigWindow(QDialog):
         # Adds everything to the layout
         layout.addLayout(ti_layout)
         layout.addLayout(c2000_layout)
+        layout.addLayout(compiler_layout)
         layout.addLayout(button_layout)
 
         # Set the main layout
@@ -748,13 +763,17 @@ class ConfigWindow(QDialog):
         self.reject()
 
     def save_and_close(self):
-
         """
         Saves the configuration and closes the dialog with an "Accepted" status.
         """
-
-        save_general_config_file(general_config, self.ti_input.text(), self.c2000_input.text())
+        save_general_config_file(
+            general_config,
+            self.ti_input.text(),
+            self.c2000_input.text(),
+            self.compiler_dropdown.currentText()
+        )
         self.accept()
+
 
     def closeEvent(self, event):
 
@@ -769,7 +788,7 @@ class ConfigWindow(QDialog):
 general_config = ConfigFile("general_config")
 
 
-def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
+def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path, compiler_version):
 
     """
     Saves the general configuration file with specified paths.
@@ -796,9 +815,10 @@ def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path):
     config_data = {
         "ti_path": ti_path,
         "c2000Ware_path": c2000Ware_path,
+        "compiler_version": compiler_version,
     }
     config_file.save(config_data)
-    QMessageBox.information(None, "General configs Saved", "Paths saved successfully!")
+    QMessageBox.information(None, "General configs Saved", "Paths and compiler saved successfully!")
 
 
 def save_project_config_file(model, config_data):
@@ -1010,7 +1030,7 @@ def convert_path_for_windows(path):
     return path 
 
 
-def create_ccsproject_file(model):
+def create_ccsproject_file(model, compiler):
 
     """ Creates a .ccsproject file in XML format for a given project.
 
@@ -1043,6 +1063,11 @@ def create_ccsproject_file(model):
     project_dir = f"./{model}_project"
     ccsproject_file = os.path.join(project_dir, ".ccsproject")
 
+    if (compiler == "ti-cgt-c2000_22.6.1.LTS"):
+        codegenToolVersion = "22.6.1.LTS"
+    if (compiler == "ti-cgt-c2000_21.6.0.LTS"):
+        codegenToolVersion = "21.6.0.LTS"
+
     # Content of .ccsproject file
     ccsproject_content = (
         '<?xml version="1.0" encoding="UTF-8" ?>\n'
@@ -1051,7 +1076,7 @@ def create_ccsproject_file(model):
         '    <!-- Specifica il tipo di dispositivo che stai usando -->\n'
         '    <deviceVariant value="com.ti.ccstudio.deviceModel.C2000.GenericC28xxDevice"/>\n'
         '    <deviceFamily value="C2000"/>\n'
-        '    <codegenToolVersion value="22.6.1.LTS"/>\n'
+        f'    <codegenToolVersion value="{codegenToolVersion}"/>\n'
         '    <!-- Specifica il formato di output (non ELF in questo caso) -->\n'
         '    <isElfFormat value="false"/>\n\n'
         '    <connection value=""/>\n'
@@ -1214,7 +1239,7 @@ def create_project_file(model, c2000_path):
         file.write(project_content)
 
 
-def create_cproject_file(model, ti_path, c2000_path, include, state):
+def create_cproject_file(model, ti_path, c2000_path, include, state, compiler):
 
     """ Creates a .cproject file in XML format for a given project.
 
@@ -1258,7 +1283,16 @@ def create_cproject_file(model, ti_path, c2000_path, include, state):
 
     first_headers_path = c2000_path + '/device_support/f2837xd/headers/include'
     second_headers_path = c2000_path + '/device_support/f2837xd/common/include'
-    third_headers_path = ti_path + '/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'
+
+    
+    if (compiler == "ti-cgt-c2000_22.6.1.LTS"):
+        number_version = 22
+        codegen_version = "22.6.1.LTS"
+        third_headers_path = ti_path + '/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'
+    if (compiler == "ti-cgt-c2000_21.6.0.LTS"):
+        number_version = 21
+        codegen_version = "21.6.0.LTS"
+        third_headers_path = ti_path + '/ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include'
 
     # Content of .cproject file
     cproject_content = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -1282,7 +1316,7 @@ def create_cproject_file(model, ti_path, c2000_path, include, state):
                 <storageModule moduleId="cdtBuildSystem" version="4.0.0">
                     <configuration artifactExtension="out" artifactName="${{ProjName}}" buildProperties="" cleanCommand="${{CG_CLEAN_CMD}}" description="RAM Build Configuration w/Debugger Support for CPU1" id="com.ti.ccstudio.buildDefinitions.C2000.Debug.2121059750" name="CPU1_RAM" parent="com.ti.ccstudio.buildDefinitions.C2000.Debug">
                         <folderInfo id="com.ti.ccstudio.buildDefinitions.C2000.Debug.2121059750." name="/" resourcePath="">
-                            <toolChain id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.DebugToolchain.1936615022" name="TI Build Tools" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.DebugToolchain" targetTool="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.linkerDebug.1604840405">
+                            <toolChain id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.DebugToolchain.1936615022" name="TI Build Tools" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.DebugToolchain" targetTool="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.linkerDebug.1604840405">
                                 <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.core.OPT_TAGS.1614280783" superClass="com.ti.ccstudio.buildDefinitions.core.OPT_TAGS" valueType="stringList">
                                     <listOptionValue builtIn="false" value="DEVICE_CONFIGURATION_ID=com.ti.ccstudio.deviceModel.C2000.GenericC28xxDevice"/>
                                     <listOptionValue builtIn="false" value="DEVICE_CORE_ID="/>
@@ -1294,62 +1328,62 @@ def create_cproject_file(model, ti_path, c2000_path, include, state):
                                     <listOptionValue builtIn="false" value="PRODUCTS="/>
                                     <listOptionValue builtIn="false" value="PRODUCT_MACRO_IMPORTS={{}}"/>
                                 </option>
-                                <option id="com.ti.ccstudio.buildDefinitions.core.OPT_CODEGEN_VERSION.1659874217" superClass="com.ti.ccstudio.buildDefinitions.core.OPT_CODEGEN_VERSION" value="22.6.1.LTS" valueType="string"/>
-                                <targetPlatform id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.targetPlatformDebug.872252835" name="Platform" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.targetPlatformDebug"/>
-                                <builder buildPath="${{BuildDirectory}}" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.builderDebug.523509514" name="GNU Make.CPU1_RAM" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.builderDebug"/>
-                                <tool id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.compilerDebug.1225049945" name="C2000 Compiler" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.compilerDebug">
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.SILICON_VERSION.76848770" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.SILICON_VERSION" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.SILICON_VERSION.28" valueType="enumerated"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.LARGE_MEMORY_MODEL.1426538618" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.LARGE_MEMORY_MODEL" value="true" valueType="boolean"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.UNIFIED_MEMORY.1204196634" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.UNIFIED_MEMORY" value="true" valueType="boolean"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.FLOAT_SUPPORT.912837455" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.FLOAT_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.FLOAT_SUPPORT.fpu32" valueType="enumerated"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.CLA_SUPPORT.467689498" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.CLA_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.CLA_SUPPORT.cla1" valueType="enumerated"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.TMU_SUPPORT.484008760" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.TMU_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.TMU_SUPPORT.tmu0" valueType="enumerated"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.VCU_SUPPORT.1379050903" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.VCU_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.VCU_SUPPORT.vcu2" valueType="enumerated"/>
+                                <option id="com.ti.ccstudio.buildDefinitions.core.OPT_CODEGEN_VERSION.1659874217" superClass="com.ti.ccstudio.buildDefinitions.core.OPT_CODEGEN_VERSION" value="{codegen_version}" valueType="string"/>
+                                <targetPlatform id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.targetPlatformDebug.872252835" name="Platform" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.targetPlatformDebug"/>
+                                <builder buildPath="${{BuildDirectory}}" id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.builderDebug.523509514" name="GNU Make.CPU1_RAM" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.builderDebug"/>
+                                <tool id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.compilerDebug.1225049945" name="C2000 Compiler" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.compilerDebug">
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.SILICON_VERSION.76848770" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.SILICON_VERSION" value="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.SILICON_VERSION.28" valueType="enumerated"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.LARGE_MEMORY_MODEL.1426538618" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.LARGE_MEMORY_MODEL" value="true" valueType="boolean"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.UNIFIED_MEMORY.1204196634" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.UNIFIED_MEMORY" value="true" valueType="boolean"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.FLOAT_SUPPORT.912837455" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.FLOAT_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.FLOAT_SUPPORT.fpu32" valueType="enumerated"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.CLA_SUPPORT.467689498" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.CLA_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.CLA_SUPPORT.cla1" valueType="enumerated"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.TMU_SUPPORT.484008760" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.TMU_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.TMU_SUPPORT.tmu0" valueType="enumerated"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.VCU_SUPPORT.1379050903" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.VCU_SUPPORT" value="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.VCU_SUPPORT.vcu2" valueType="enumerated"/>
 
                                     <!-- Sezione Include Path -->
-                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.INCLUDE_PATH.1816198112" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.INCLUDE_PATH" valueType="includePath">
+                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.INCLUDE_PATH.1816198112" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.INCLUDE_PATH" valueType="includePath">
                                         <listOptionValue builtIn="false" value="{first_headers_path}"/>
                                         <listOptionValue builtIn="false" value="{second_headers_path}"/>
                                         <listOptionValue builtIn="false" value="{third_headers_path}"/>
                                         <listOptionValue builtIn="false" value="{include_path}"/>
                                     </option>
 
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEBUGGING_MODEL.2023058995" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEBUGGING_MODEL" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEBUGGING_MODEL.SYMDEBUG__DWARF" valueType="enumerated"/>
-                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEFINE.928837016" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DEFINE" valueType="definedSymbols">
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DEBUGGING_MODEL.2023058995" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DEBUGGING_MODEL" value="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DEBUGGING_MODEL.SYMDEBUG__DWARF" valueType="enumerated"/>
+                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DEFINE.928837016" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DEFINE" valueType="definedSymbols">
                                         <listOptionValue builtIn="false" value="CPU1"/>
                                         <listOptionValue builtIn="false" value="_LAUNCHXL_F28379D"/>
                                         <listOptionValue builtIn="false" value="STATE={state}"/>
                                     </option>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DISPLAY_ERROR_NUMBER.1888790822" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
-                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DIAG_WARNING.1826112291" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.DIAG_WARNING" valueType="stringList">
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DISPLAY_ERROR_NUMBER.1888790822" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
+                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DIAG_WARNING.1826112291" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DIAG_WARNING" valueType="stringList">
                                         <listOptionValue builtIn="false" value="225"/>
                                     </option>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.ABI.1734084811" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.ABI" value="com.ti.ccstudio.buildDefinitions.C2000_22.6.compilerID.ABI.coffabi" valueType="enumerated"/>
-                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__C_SRCS.935175564" name="C Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__C_SRCS"/>
-                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__CPP_SRCS.1754916874" name="C++ Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__CPP_SRCS"/>
-                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__ASM_SRCS.966474163" name="Assembly Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__ASM_SRCS"/>
-                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__ASM2_SRCS.1331774997" name="Assembly Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.compiler.inputType__ASM2_SRCS"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.ABI.1734084811" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.ABI" value="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.ABI.coffabi" valueType="enumerated"/>
+                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__C_SRCS.935175564" name="C Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__C_SRCS"/>
+                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__CPP_SRCS.1754916874" name="C++ Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__CPP_SRCS"/>
+                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__ASM_SRCS.966474163" name="Assembly Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__ASM_SRCS"/>
+                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__ASM2_SRCS.1331774997" name="Assembly Sources" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compiler.inputType__ASM2_SRCS"/>
                                 </tool>
 
                                 <!-- Sezione Linker Config -->
-                                <tool id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.linkerDebug.1604840405" name="C2000 Linker" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exe.linkerDebug">
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.MAP_FILE.150192862" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.MAP_FILE" value="&quot;${{ProjName}}.map&quot;" valueType="string"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.OUTPUT_FILE.508871516" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.OUTPUT_FILE" value="${{ProjName}}.out" valueType="string"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.STACK_SIZE.794155856" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.STACK_SIZE" value="0x100" valueType="string"/>
-                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.LIBRARY.779473277" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.LIBRARY" valueType="libs">
+                                <tool id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.linkerDebug.1604840405" name="C2000 Linker" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exe.linkerDebug">
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.MAP_FILE.150192862" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.MAP_FILE" value="&quot;${{ProjName}}.map&quot;" valueType="string"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.OUTPUT_FILE.508871516" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.OUTPUT_FILE" value="${{ProjName}}.out" valueType="string"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.STACK_SIZE.794155856" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.STACK_SIZE" value="0x100" valueType="string"/>
+                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.LIBRARY.779473277" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.LIBRARY" valueType="libs">
                                         <listOptionValue builtIn="false" value="rts2800_fpu32.lib"/>
                                         <listOptionValue builtIn="false" value="{linker_path1}"/>
                                         <listOptionValue builtIn="false" value="{linker_path2}"/>
                                         <listOptionValue builtIn="false" value="libc.a"/>
                                     </option>
-                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.SEARCH_PATH.1443810135" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.SEARCH_PATH" valueType="libPaths">
+                                    <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.SEARCH_PATH.1443810135" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.SEARCH_PATH" valueType="libPaths">
                                         <listOptionValue builtIn="false" value="${{CG_TOOL_ROOT}}/lib"/>
                                     </option>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.DISPLAY_ERROR_NUMBER.96471687" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
-                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.XML_LINK_INFO.1957298402" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.linkerID.XML_LINK_INFO" value="&quot;${{ProjName}}_linkInfo.xml&quot;" valueType="string"/>
-                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exeLinker.inputType__CMD_SRCS.1799253343" name="Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exeLinker.inputType__CMD_SRCS"/>
-                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exeLinker.inputType__CMD2_SRCS.478843577" name="Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exeLinker.inputType__CMD2_SRCS"/>
-                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_22.6.exeLinker.inputType__GEN_CMDS.1897434562" name="Generated Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.C2000_22.6.exeLinker.inputType__GEN_CMDS"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.DISPLAY_ERROR_NUMBER.96471687" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
+                                    <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.XML_LINK_INFO.1957298402" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.linkerID.XML_LINK_INFO" value="&quot;${{ProjName}}_linkInfo.xml&quot;" valueType="string"/>
+                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exeLinker.inputType__CMD_SRCS.1799253343" name="Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exeLinker.inputType__CMD_SRCS"/>
+                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exeLinker.inputType__CMD2_SRCS.478843577" name="Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exeLinker.inputType__CMD2_SRCS"/>
+                                    <inputType id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exeLinker.inputType__GEN_CMDS.1897434562" name="Generated Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.exeLinker.inputType__GEN_CMDS"/>
                                 </tool>
                             </toolChain>
                         </folderInfo>
@@ -1444,7 +1478,7 @@ def advise(title, message):
     return response[0] if response else False
 
 
-def update_paths(ti_path, c2000_path):
+def update_paths(ti_path, c2000_path, compiler):
 
     """ Updates paths based on the new values of `ti_path` and `c2000_path`.
 
@@ -1468,19 +1502,27 @@ def update_paths(ti_path, c2000_path):
 
     """
     
+    # Determine third_headers_path based on the selected compiler
+    if compiler == "ti-cgt-c2000_22.6.1.LTS":
+        third_headers_path = os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include')
+    elif compiler == "ti-cgt-c2000_21.6.0.LTS":
+        third_headers_path = os.path.join(ti_path, 'ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include')
+
+    # Build the dictionary of paths
     paths_to_check = {
         "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
         "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
         "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
         "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
-        "third_headers_path": os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'),
+        "third_headers_path": third_headers_path,
         "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
-        "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source')
+        "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source'),
     }
+
     return paths_to_check
 
 
-def check_paths(ti_path, c2000_path):
+def check_paths(ti_path, c2000_path, compiler):
     
     """ Verifies and updates required paths and files for the project configuration.
 
@@ -1508,18 +1550,22 @@ def check_paths(ti_path, c2000_path):
         ti_path = convert_path_for_wsl(ti_path)
         c2000_path = convert_path_for_wsl(c2000_path)
 
-    def update_paths(ti_path, c2000_path):
-        return {
+    def update_paths(ti_path, c2000_path, compiler):
+       return {
             "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
             "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
             "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
             "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
-            "third_headers_path": os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include'),
+            "third_headers_path": os.path.join(
+            ti_path,
+                'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include' if compiler == "ti-cgt-c2000_22.6.1.LTS" 
+                else 'ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include'
+            ),
             "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
             "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source')
         }
 
-    paths_to_check = update_paths(ti_path, c2000_path)
+    paths_to_check = update_paths(ti_path, c2000_path, compiler)
 
     # Check if the paths exist.
     while True:
@@ -1546,7 +1592,7 @@ def check_paths(ti_path, c2000_path):
                     c2000_path_update = convert_path_for_wsl(c2000_path_update)
 
                 # Update the paths to check with the new values
-                paths_to_check = update_paths(ti_path_update, c2000_path_update)
+                paths_to_check = update_paths(ti_path_update, c2000_path_update, compiler)
             else:
                 general_config.delete()
                 QMessageBox.information(None, "Configuration", f"{general_config.get_name()} has been deleted.")
@@ -1631,8 +1677,9 @@ def press_configure_button():
     config = general_config.load()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
+    compiler = config.get('compiler_version', '')
 
-    check_paths(ti_path, c2000Ware_path)
+    check_paths(ti_path, c2000Ware_path, compiler)
 
 
 def check_blocks_set(blocks):
@@ -2603,6 +2650,7 @@ def create_project_structure(model, blocks):
     config = general_config.load()
     ti_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
+    compiler_version = config.get('compiler_version', '')
 
     if isInWSL:
 
@@ -2762,9 +2810,9 @@ def create_project_structure(model, blocks):
         include_dir_absolute_path = convert_path_for_windows(include_dir_absolute_path)
 
     # create the .project, .cproject, .ccsproject files
-    create_ccsproject_file(model)
+    create_ccsproject_file(model, compiler_version)
     create_project_file(model, c2000Ware_path)
-    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path, state)
+    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path, state, compiler_version)
 
     # Displays a message indicating that the project was created successfully
     QMessageBox.information(None, "Project Status", "Project successfully created")
