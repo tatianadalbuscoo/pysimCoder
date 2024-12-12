@@ -2204,7 +2204,7 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
         # Timer ISR
         f.write("__interrupt void cpu_timer0_isr(void)\n{\n")
         f.write("    CpuTimer0.InterruptCount++;\n")
-        #f.write(f"    Adc{module_lower}Regs.ADCSOCFRC1.bit.SOC{soc} = 1; // Force start ADC conversion on SOC0\n")
+        f.write(f"    Adc{module_lower}Regs.ADCSOCFRC1.bit.SOC{soc} = 1; // Force start ADC conversion on SOC0\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1; // Acknowledge interrupt in PIE\n")
         f.write("}\n\n")
 

@@ -102,24 +102,32 @@ int ADC_ReadSOC(const char* adc_module, int soc, int generateInterrupt)
         return -1;
     }
 
+    // for main1 and main2
+    volatile struct ADC_REGS* adc_regs;
+
+
     volatile Uint16* adc_result;
 
     // Map ADC module
     if (strcmp(adc_module, "A") == 0)
     {
         adc_result = &AdcaResultRegs.ADCRESULT0;
+        adc_regs = &AdcaRegs;
     }
     else if (strcmp(adc_module, "B") == 0)
     {
         adc_result = &AdcbResultRegs.ADCRESULT0;
+        adc_regs = &AdcbRegs;
     }
     else if (strcmp(adc_module, "C") == 0)
     {
         adc_result = &AdccResultRegs.ADCRESULT0;
+        adc_regs = &AdccRegs;
     }
     else if (strcmp(adc_module, "D") == 0)
     {
         adc_result = &AdcdResultRegs.ADCRESULT0;
+        adc_regs = &AdcdRegs;
     }
     else
     {
@@ -198,10 +206,13 @@ void ADC_SetMode_main3(Uint16 adc, Uint16 resolution, Uint16 signalMode, int cha
     // Configure the SOC for the given channel
     (&adc_regs->ADCSOC0CTL)[soc].bit.CHSEL = channel;   // Select input channel
     (&adc_regs->ADCSOC0CTL)[soc].bit.ACQPS = 14;        // Set acquisition time
-    (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = 1;       // trigger da timer 0
+    if (generate_interrupt == 0) {
+        (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = 1;       // trigger da timer 0
+    }
 
     // Dynamically assign an interrupt (INT1 or INT2) based on availability
     if (generate_interrupt == 1) {
+        (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = 0;       // software trigger
         adc_regs->ADCINTSEL1N2.bit.INT1SEL = soc;  // Map SOC to ADCINT1
         adc_regs->ADCINTSEL1N2.bit.INT1E = 1;      // Enable ADCINT1
     }
