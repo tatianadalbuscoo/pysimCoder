@@ -166,7 +166,7 @@ int ADC_ReadSOC(const char* adc_module, int soc, int generateInterrupt)
     return adc_result[soc];
 #endif
 
-#if STATE == 3
+#if STATE == 3 || STATE == 4
     return adc_result[soc];
 #endif
 
@@ -206,13 +206,26 @@ void ADC_SetMode_main3(Uint16 adc, Uint16 resolution, Uint16 signalMode, int cha
     // Configure the SOC for the given channel
     (&adc_regs->ADCSOC0CTL)[soc].bit.CHSEL = channel;   // Select input channel
     (&adc_regs->ADCSOC0CTL)[soc].bit.ACQPS = 14;        // Set acquisition time
+
     if (generate_interrupt == 0) {
+#if STATE == 3
         (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = 1;       // trigger da timer 0
+# endif
+
+#if STATE == 4
+    #if defined(NREPWMTRIGGERADC)
+            (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = NREPWMTRIGGERADC;
+    #endif
+#endif
     }
 
-    // Dynamically assign an interrupt (INT1 or INT2) based on availability
     if (generate_interrupt == 1) {
-        (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = 0;       // software trigger
+
+#if STATE == 4
+        #if defined(NREPWMTRIGGERADC)
+                    (&adc_regs->ADCSOC0CTL)[soc].bit.TRIGSEL = NREPWMTRIGGERADC;
+        #endif
+#endif
         adc_regs->ADCINTSEL1N2.bit.INT1SEL = soc;  // Map SOC to ADCINT1
         adc_regs->ADCINTSEL1N2.bit.INT1E = 1;      // Enable ADCINT1
     }

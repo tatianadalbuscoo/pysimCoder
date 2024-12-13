@@ -1239,7 +1239,7 @@ def create_project_file(model, c2000_path):
         file.write(project_content)
 
 
-def create_cproject_file(model, ti_path, c2000_path, include, state, compiler):
+def create_cproject_file(model, ti_path, c2000_path, include, state, compiler, main4_nr_epwm_trigger_adc):
 
     """ Creates a .cproject file in XML format for a given project.
 
@@ -1293,6 +1293,11 @@ def create_cproject_file(model, ti_path, c2000_path, include, state, compiler):
         number_version = 21
         codegen_version = "21.6.0.LTS"
         third_headers_path = ti_path + '/ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include'
+
+    conditional_define = ""
+    if main4_nr_epwm_trigger_adc is not None:
+        conditional_define = f'<listOptionValue builtIn="false" value="NREPWMTRIGGERADC={main4_nr_epwm_trigger_adc}"/>'
+
 
     # Content of .cproject file
     cproject_content = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -1353,6 +1358,7 @@ def create_cproject_file(model, ti_path, c2000_path, include, state, compiler):
                                         <listOptionValue builtIn="false" value="CPU1"/>
                                         <listOptionValue builtIn="false" value="_LAUNCHXL_F28379D"/>
                                         <listOptionValue builtIn="false" value="STATE={state}"/>
+                                        {conditional_define}
                                     </option>
                                     <option id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DISPLAY_ERROR_NUMBER.1888790822" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
                                     <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DIAG_WARNING.1826112291" superClass="com.ti.ccstudio.buildDefinitions.C2000_{number_version}.6.compilerID.DIAG_WARNING" valueType="stringList">
@@ -1862,7 +1868,7 @@ def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_o
     elif state == 3:
         generate_main_mode2_timer(path_main, model, timer_period, adc_block)
     elif state == 4:
-        generate_main_mode2_epwm(path_main, model, tbprd, pwm_output)
+        generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block)
 
 
  # state 1
@@ -2261,7 +2267,7 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
 
 
 # state 4
-def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
+def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block):
 
     """
     Generates the main.c file for Mode 2 with ePWM-based ADC triggering.
@@ -2286,51 +2292,54 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
     
     if pwm_output == "out1a" or pwm_output == "out1b":
         epwmRegs = "EPwm1Regs"
-        triggerOnePWM = 5
 
     elif pwm_output == "out2a" or pwm_output == "out2b":
         epwmRegs = "EPwm2Regs"
-        triggerOnePWM = 7
 
     elif pwm_output == "out3a" or pwm_output == "out3b":
         epwmRegs = "EPwm3Regs"
-        triggerOnePWM = 9
 
     elif pwm_output == "out4a" or pwm_output == "out4b":
         epwmRegs = "EPwm4Regs"
-        triggerOnePWM = 11
 
     elif pwm_output == "out5a" or pwm_output == "out5b":
         epwmRegs = "EPwm5Regs"
-        triggerOnePWM = 13
 
     elif pwm_output == "out6a" or pwm_output == "out6b":
         epwmRegs = "EPwm6Regs"
-        triggerOnePWM = 15
 
     elif pwm_output == "out7a" or pwm_output == "out7b":
         epwmRegs = "EPwm7Regs"
-        triggerOnePWM = 17
 
     elif pwm_output == "out8a" or pwm_output == "out8b":
         epwmRegs = "EPwm8Regs"
-        triggerOnePWM = 19
 
     elif pwm_output == "out9a" or pwm_output == "out9b":
         epwmRegs = "EPwm9Regs"
-        triggerOnePWM = 21
 
     elif pwm_output == "out10a" or pwm_output == "out10b":
         epwmRegs = "EPwm10Regs"
-        triggerOnePWM = 23
 
     elif pwm_output == "out11a" or pwm_output == "out11b":
         epwmRegs = "EPwm11Regs"
-        triggerOnePWM = 25
 
     elif pwm_output == "out12a" or pwm_output == "out12b":
         epwmRegs = "EPwm12Regs"
-        triggerOnePWM = 27
+
+    # Extract values
+    module = adc_block.get('module', None)
+    module_lower = module.lower() if module else None
+    soc = int(adc_block.get('soc', 0))
+    channel = int(adc_block.get('channel', 0))
+
+    if(module == 'A'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx1 = 1;"
+    if(module == 'B'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx2 = 1;"
+    if(module == 'C'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx3 = 1;"
+    if(module == 'D'):
+        interrupt = "PieCtrlRegs.PIEIER1.bit.INTx4 = 1;"
 
     with open(path_main, "w") as f:
         f.write("//###########################################################################\n")
@@ -2349,14 +2358,14 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("void setup(void);\n")
         f.write("void loop(void);\n")
         f.write("double get_run_time(void);\n")
-        f.write("double get_Tsamp(void);\n\n")
-        f.write("interrupt void adca1_isr(void);\n\n")
+        f.write("double get_Tsamp(void);\n")
+        f.write(f"interrupt void adc{module_lower}1_isr(void);\n\n")
     
         # Defines and Globals
         f.write("// Defines\n")
         f.write("#define RESULTS_BUFFER_SIZE 256\n\n")
         f.write("// Globals\n")
-        f.write("Uint16 AdcaResults[RESULTS_BUFFER_SIZE];\n")
+        f.write("Uint16 AdcResults[RESULTS_BUFFER_SIZE];\n")
         f.write("Uint16 resultsIndex;\n")
         f.write("volatile Uint16 bufferFull;\n")
         f.write(f"static double Tsamp = {pwm_period}; // Intervallo temporale\n")
@@ -2370,22 +2379,22 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("}\n\n")
     
         # adca1_isr Function
-        f.write("// adca1_isr - Read ADC Buffer in ISR\n")
-        f.write("// Everytime ADC complete a conversion, the value is memorized in the AdcaResults buffer.\n")
-        f.write("interrupt void adca1_isr(void)\n")
+        f.write(f"// adc{module_lower}1_isr - Read ADC Buffer in ISR\n")
+        f.write(f"// Everytime ADC complete a conversion, the value is memorized in the AdcResults buffer.\n")
+        f.write(f"interrupt void adc{module_lower}1_isr(void)\n")
         f.write("{\n")
-        f.write("    AdcaResults[resultsIndex++] = AdcaResultRegs.ADCRESULT0;\n")
+        f.write(f"    AdcResults[resultsIndex++] = Adc{module_lower}ResultRegs.ADCRESULT{soc};\n")
         f.write("    if(RESULTS_BUFFER_SIZE <= resultsIndex)\n")
         f.write("    {\n")
         f.write("        resultsIndex = 0;\n")
         f.write("        bufferFull = 1;\n")
         f.write("    }\n\n")
-        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n\n")
+        f.write(f"    Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n\n")
         f.write("    // Check if overflow has occurred\n")
-        f.write("    if(1 == AdcaRegs.ADCINTOVF.bit.ADCINT1)\n")
+        f.write(f"    if(1 == Adc{module_lower}Regs.ADCINTOVF.bit.ADCINT1)\n")
         f.write("    {\n")
-        f.write("        AdcaRegs.ADCINTOVFCLR.bit.ADCINT1 = 1; //clear INT1 overflow flag\n")
-        f.write("        AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n")
+        f.write(f"        Adc{module_lower}Regs.ADCINTOVFCLR.bit.ADCINT1 = 1; //clear INT1 overflow flag\n")
+        f.write(f"        Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n")
         f.write("    }\n\n")
         f.write("    T += Tsamp;\n")
         f.write(f"    {model}_isr(T);\n\n")
@@ -2407,20 +2416,17 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("    InitPieVectTable();\n\n")
         f.write("    // Map ISR functions\n")
         f.write("    EALLOW;\n")
-        f.write("    PieVectTable.ADCA1_INT = &adca1_isr;  // function for ADCA interrupt 1\n")
+        f.write(f"    PieVectTable.ADC{module}1_INT = &adc{module_lower}1_isr;\n")
         f.write("    EDIS;\n\n")
-        f.write("    ConfigureADC();\n\n")
         f.write("    EALLOW;\n")
         f.write(f"    {epwmRegs}.ETSEL.bit.SOCAEN = 0; // Disable SOC on A group\n")
-        f.write(f"    {epwmRegs}.ETSEL.bit.SOCASEL = 4;// Select SOC on up-count\n")
+        f.write(f"    {epwmRegs}.ETSEL.bit.SOCASEL = 6;// Select SOC on up-down count\n")
         f.write(f"    {epwmRegs}.ETPS.bit.SOCAPRD = 1; // Generate pulse on 1st event\n")
         f.write("    EDIS;\n\n")
         f.write(f"    {model}_init();      // Initialize blocks generated by PySimCoder\n\n")
         f.write("    EALLOW;\n")
         f.write(f"    {epwmRegs}.TBCTL.bit.CTRMODE = 3; // freeze counter\n")
         f.write("    EDIS;\n\n")
-        f.write("    // Setup the ADC for ePWM triggered conversions on channel 0\n")
-        f.write("    SetupADCEpwm(0);\n\n")
         f.write("    // Enable global Interrupts and higher priority real-time debug events:\n")
         f.write("    IER |= M_INT1;     // Enable group 1 interrupts\n")
         f.write("    EINT;              // Enable Global interrupt INTM\n")
@@ -2428,13 +2434,12 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("    // Initialize results buffer\n")
         f.write("    for(resultsIndex = 0; resultsIndex < RESULTS_BUFFER_SIZE; resultsIndex++)\n")
         f.write("    {\n")
-        f.write("        AdcaResults[resultsIndex] = 0;\n")
+        f.write("        AdcResults[resultsIndex] = 0;\n")
         f.write("    }\n")
         f.write("    resultsIndex = 0;\n")
         f.write("    bufferFull = 0;\n\n")
         f.write("    // enable PIE interrupt\n")
-        f.write("    PieCtrlRegs.PIEIER1.bit.INTx1 = 1;\n\n")
-        f.write("    // sync ePWM\n")
+        f.write(f"    {interrupt}\n")
         f.write("    EALLOW;\n")
         f.write("    CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;\n")
         f.write("    EDIS;\n\n")
@@ -2449,7 +2454,7 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("    {\n")
         f.write("        //start ePWM\n")
         f.write(f"        {epwmRegs}.ETSEL.bit.SOCAEN = 1;\n")
-        f.write(f"        {epwmRegs}.TBCTL.bit.CTRMODE = 0;\n\n")
+        f.write(f"        {epwmRegs}.TBCTL.bit.CTRMODE = 2;\n\n")
         f.write("        //wait while ePWM causes ADC conversions, which then cause interrupts,\n")
         f.write("        while(!bufferFull);\n")
         f.write("        bufferFull = 0; //clear the buffer full flag\n\n")
@@ -2460,45 +2465,6 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output):
         f.write("        //software breakpoint, hit run again to get updated conversions\n")
         f.write("        asm(\"   ESTOP0\");\n")
         f.write("    } while(1);\n")
-        f.write("}\n\n")
-    
-        # ConfigureADC Function
-        f.write("// ConfigureADC - Write ADC configurations and power up the ADC for both\n")
-        f.write("//                ADC A and ADC B\n")
-        f.write("void ConfigureADC(void)\n")
-        f.write("{\n")
-        f.write("    EALLOW;\n\n")
-        f.write("    //write configurations\n")
-        f.write("    AdcaRegs.ADCCTL2.bit.PRESCALE = 6; //set ADCCLK divider to /4\n")
-        f.write("    AdcSetMode(ADC_ADCA, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);\n\n")
-        f.write("    //Set pulse positions to late\n")
-        f.write("    AdcaRegs.ADCCTL1.bit.INTPULSEPOS = 1;\n\n")
-        f.write("    //power up the ADC\n")
-        f.write("    AdcaRegs.ADCCTL1.bit.ADCPWDNZ = 1;\n\n")
-        f.write("    //delay for 1ms to allow ADC time to power up\n")
-        f.write("    DELAY_US(1000);\n\n")
-        f.write("    EDIS;\n")
-        f.write("}\n\n")
-        
-        # SetupADCEpwm Function
-        f.write("// SetupADCEpwm - Setup ADC EPWM acquisition window\n")
-        f.write("void SetupADCEpwm(Uint16 channel)\n")
-        f.write("{\n")
-        f.write("    Uint16 acqps;\n\n")
-        f.write("    // Determine minimum acquisition window (in SYSCLKS) based on resolution\n")
-        f.write("    if(ADC_RESOLUTION_12BIT == AdcaRegs.ADCCTL2.bit.RESOLUTION)\n")
-        f.write("        acqps = 14; //75ns\n")
-        f.write("    else //resolution is 16-bit\n")
-        f.write("        acqps = 63; //320ns\n\n")
-        f.write("    //Select the channels to convert and end of conversion flag\n")
-        f.write("    EALLOW;\n")
-        f.write("    AdcaRegs.ADCSOC0CTL.bit.CHSEL = channel;  //SOC0 will convert pin A0\n")
-        f.write("    AdcaRegs.ADCSOC0CTL.bit.ACQPS = acqps;    //sample window is 100 SYSCLK cycles\n")
-        f.write(f"    AdcaRegs.ADCSOC0CTL.bit.TRIGSEL = {triggerOnePWM};      //trigger on ePWM SOCA/C\n")
-        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = 0;    //end of SOC0 will set INT1 flag\n")
-        f.write("    AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;      //enable INT1 flag\n")
-        f.write("    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;    //make sure INT1 flag is cleared\n")
-        f.write("    EDIS;\n")
         f.write("}\n\n")
         f.write("double get_run_time(void)\n")
         f.write("{\n")
@@ -2629,7 +2595,7 @@ def create_project_structure(model, blocks):
     --------
     -
     """
-
+    triggerOnePWM = None
     functions_name = check_blocks_set(blocks)
     functions_present_schema = check_blocks_list(blocks)
 
@@ -2744,23 +2710,8 @@ def create_project_structure(model, blocks):
         dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output, None)
 
 
-
-    if state == 4:
-        epwm_output_mode2 = config_data.get("epwm_output_mode2")
-
-        tbprd, pwm_output = find_matching_pwm_output(blocks, "epwmblk", epwm_output_mode2)
-
-        if tbprd is None and pwm_output is None:
-            QMessageBox.warning(None, "Error", f"The epwm block with epwm output {epwm_output_mode2} that trigger the ADC is missing. Project {model} has been cancelled.")
-            project_dir = f"./{model}_project"
-            if os.path.exists(project_dir):
-                shutil.rmtree(project_dir)
-            return
-
-
-        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output, None)
         
-    if state == 3:
+    if state == 3 or state == 4:
         # Call the function to extract the ADC block
         result = extract_adc_parameters(blocks, 'adcblk')
 
@@ -2785,8 +2736,59 @@ def create_project_structure(model, blocks):
 
     if state == 3:
         timer_period = config_data.get("timer_period")
-        print(result)
         dispatch_main_generation(state, main_file, model, timer_period, None, None, result)
+
+
+    if state == 4:
+        epwm_output_mode2 = config_data.get("epwm_output_mode2")
+
+        tbprd, pwm_output = find_matching_pwm_output(blocks, "epwmblk", epwm_output_mode2)
+
+        if tbprd is None and pwm_output is None:
+            QMessageBox.warning(None, "Error", f"The epwm block with epwm output {epwm_output_mode2} that trigger the ADC is missing. Project {model} has been cancelled.")
+            project_dir = f"./{model}_project"
+            if os.path.exists(project_dir):
+                shutil.rmtree(project_dir)
+            return
+
+        dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output, result)
+        
+        if pwm_output == "out1a" or pwm_output == "out1b":
+            triggerOnePWM = 5
+
+        elif pwm_output == "out2a" or pwm_output == "out2b":
+            triggerOnePWM = 7
+
+        elif pwm_output == "out3a" or pwm_output == "out3b":
+            triggerOnePWM = 9
+
+        elif pwm_output == "out4a" or pwm_output == "out4b":
+            triggerOnePWM = 11
+
+        elif pwm_output == "out5a" or pwm_output == "out5b":
+            triggerOnePWM = 13
+
+        elif pwm_output == "out6a" or pwm_output == "out6b":
+            triggerOnePWM = 15
+
+        elif pwm_output == "out7a" or pwm_output == "out7b":
+            triggerOnePWM = 17
+
+        elif pwm_output == "out8a" or pwm_output == "out8b":
+            triggerOnePWM = 19
+
+        elif pwm_output == "out9a" or pwm_output == "out9b":
+            triggerOnePWM = 21
+
+        elif pwm_output == "out10a" or pwm_output == "out10b":
+            triggerOnePWM = 23
+
+        elif pwm_output == "out11a" or pwm_output == "out11b":
+            triggerOnePWM = 25
+
+        elif pwm_output == "out12a" or pwm_output == "out12b":
+            triggerOnePWM = 27
+
 
 
     find_and_copy_files(functions_name,  CodeGen_path, src_dir, include_dir)
@@ -2812,7 +2814,7 @@ def create_project_structure(model, blocks):
     # create the .project, .cproject, .ccsproject files
     create_ccsproject_file(model, compiler_version)
     create_project_file(model, c2000Ware_path)
-    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path, state, compiler_version)
+    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path, state, compiler_version, triggerOnePWM)
 
     # Displays a message indicating that the project was created successfully
     QMessageBox.information(None, "Project Status", "Project successfully created")
