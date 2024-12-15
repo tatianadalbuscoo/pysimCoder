@@ -20,10 +20,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 #include "pyblock.h"
 
 static void init(python_block* block)
-{       
-    double* u = block->u[0];              
+{
+    double* u = block->u[0];
 
-    scia_init();
+    configure_gpio42_43_for_scia();
+
+    // Mappa gli interrupt SCIA nella tabella PIE
+    EALLOW;
+    PieVectTable.SCIA_TX_INT = &sciaTxFifoIsr;
+    EDIS;
+
+    scia_fifo_init();  // Inizializza la FIFO di SCIA
+    interrupt_fifo_setup();  // Configura gli interrupt e invia i dati iniziali
+
+    PieCtrlRegs.PIECTRL.bit.ENPIE = 1;
+    IER |= M_INT9;
+    EINT;
 
 }
 
@@ -32,7 +44,6 @@ static void inout(python_block* block)
 {
     double* u = block->u[0];
 
-    loop();
 }
 
 

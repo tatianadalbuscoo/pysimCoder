@@ -11,12 +11,11 @@
 #include "F28x_Project.h"
 
 
-void scia_init(void);
 void scia_fifo_init(void);
-void scia_xmit(int a);
-void scia_send_message(const char* msg);
+void interrupt_fifo_setup(void);
 void configure_gpio42_43_for_scia(void);
-void loop();
+interrupt void sciaTxFifoIsr(void);
+void PutToFifo(float floatToSend);
 
 
 
