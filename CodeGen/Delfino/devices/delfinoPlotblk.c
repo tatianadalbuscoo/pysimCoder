@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 
 static void init(python_block* block)
 {
-    double* u = block->u[0];
 
     configure_gpio42_43_for_scia();
 
@@ -35,7 +34,7 @@ static void init(python_block* block)
 
     PieCtrlRegs.PIECTRL.bit.ENPIE = 1;
     IER |= M_INT9;
-    EINT;
+    //EINT;
 
 }
 
@@ -43,6 +42,9 @@ static void init(python_block* block)
 static void inout(python_block* block)
 {
     double* u = block->u[0];
+    float signal = u[0];
+
+    add_signal_in_buffer(signal);
 
 }
 

@@ -3,11 +3,29 @@
 
 #define FLOAT_BYTES 4     // Numero di byte per ogni float
 #define FIFO_SIZE 4       // Numero massimo di float nella FIFO
+#define DATA_BUFFER 70
 
-volatile float tx_buffer[5] = { 1.1, 2.2, 3.3, 4.4, 5.5 }; // Buffer con un solo valore float
-volatile int tx_index = 0;           // Indice del buffer di float
-volatile Uint16 isr_counter = 0;     // Contatore per verificare quante volte viene invocato l'ISR
-volatile Uint16 fifo_byte_counter = 0; // Contatore dei byte trasmessi per ciascun float
+volatile float tx_buffer[DATA_BUFFER] = {}; // Buffer con un solo valore float
+volatile int tx_index = 0;           // Indice del buffer di float quello per inviare
+volatile int index_data_buffer = 0;  // Dove va inserito il prossimo dato quello per il buffer
+volatile int number_float_buffer = 0; //Numero di float nel buffer da inviare alla fifo tx
+
+void add_signal_in_buffer(float value)
+{
+    // Se il buffer è pieno, ricomincia a scrivere dalla posizione 0
+    if (index_data_buffer >= sizeof(tx_buffer) / sizeof(tx_buffer[0])) {
+        index_data_buffer = 0; // Resetta l'indice per sovrascrivere
+    }
+
+    // Aggiungi il segnale al buffer nella posizione successiva disponibile
+    tx_buffer[index_data_buffer] = value;
+
+    // Incrementa il contatore del numero di float nel buffer
+    number_float_buffer++;
+
+    index_data_buffer++;
+}
+
 
 // Configura GPIO42 e GPIO43 per SCIA
 void configure_gpio42_43_for_scia(void)
@@ -82,21 +100,18 @@ void PutToFifo(float floatToSend)
 // ISR per la trasmissione
 interrupt void sciaTxFifoIsr(void)
 {
-    isr_counter++;  // Incrementa il contatore ISR
+    int i;
+    for (i = 0; i < 4; i++) {
 
-    // Trasmetti il float corrente
-    int dati_da_inviare = sizeof(tx_buffer) / sizeof(tx_buffer[0]);
-    if (tx_index < sizeof(tx_buffer) / sizeof(tx_buffer[0])) { // Controlla che ci siano dati da inviare
-        int i;
-        for (i = 0; i < 4; i++) {
-            PutToFifo(tx_buffer[tx_index]);
-            tx_index++;
+        if (number_float_buffer <= 0) {
+            break;
         }
-
-    }
-    else {
-        int u;
-        u = 8;
+        if (tx_index >= DATA_BUFFER) {
+            tx_index = 0;
+        }
+        PutToFifo(tx_buffer[tx_index]);
+        tx_index++;
+        number_float_buffer--;
     }
 
     SciaRegs.SCIFFTX.bit.TXFFINTCLR = 1;  // Pulisci il flag TX

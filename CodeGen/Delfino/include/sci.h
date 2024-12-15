@@ -16,6 +16,7 @@ void interrupt_fifo_setup(void);
 void configure_gpio42_43_for_scia(void);
 interrupt void sciaTxFifoIsr(void);
 void PutToFifo(float floatToSend);
+void add_signal_in_buffer(float value);
 
 
 
