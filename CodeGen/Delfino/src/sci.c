@@ -27,8 +27,8 @@ void scia_fifo_init(void)
     SciaRegs.SCICTL1.all = 0x0003;     // Abilita TX, RX
     SciaRegs.SCICTL2.bit.TXINTENA = 1; // Abilita interrupt TX
 
-    SciaRegs.SCIHBAUD.all = 0x0A;    // Baud rate
-    SciaRegs.SCILBAUD.all = 0x2B;
+    SciaRegs.SCIHBAUD.all = 0x00;    // Baud rate
+    SciaRegs.SCILBAUD.all = 0x0B;
 
     SciaRegs.SCICCR.bit.LOOPBKENA = 0; // Disabilita loopback
     SciaRegs.SCIFFTX.bit.TXFFIL = 0;  // Interrupt quando la FIFO è vuota
@@ -37,12 +37,6 @@ void scia_fifo_init(void)
     SciaRegs.SCIFFTX.bit.SCIFFENA = 1; // Abilita le funzionalità avanzate della FIFO
     SciaRegs.SCIFFTX.bit.SCIRST = 1; // Il modulo SCI è attivo
 
-
-    //SciaRegs.SCIFFTX.all = 0xC022;     // Abilita FIFO TX
-    // Configura la FIFO TX per chiamare l'interrupt quando è vuota
-      // SciaRegs.SCIFFTX.bit.TXFFIL = 1;   // Soglia per l'interrupt: FIFO vuota
-       //SciaRegs.SCIFFTX.bit.TXFFIENA = 1; // Abilita interrupt TX FIFO
-       //SciaRegs.SCIFFTX.bit.TXFIFORESET = 1; // Reset della FIFO TX
 
     SciaRegs.SCIFFCT.all = 0x0;
 
@@ -103,8 +97,6 @@ interrupt void sciaTxFifoIsr(void)
     else {
         int u;
         u = 8;
-        // Se tutti i dati sono stati inviati, resetta l'indice per una nuova trasmissione
-        //tx_index = 0;
     }
 
     SciaRegs.SCIFFTX.bit.TXFFINTCLR = 1;  // Pulisci il flag TX

@@ -1,9 +1,8 @@
 import serial
 import struct
 
-# Configura la porta seriale corretta
-porta_seriale = "COM4"  # Cambia con la tua porta
-baud_rate = 9600  # Cambia se necessario
+porta_seriale = "COM4"
+baud_rate = 2000000  # Baud rate a 2 Mbps
 
 try:
     # Apre la porta seriale
