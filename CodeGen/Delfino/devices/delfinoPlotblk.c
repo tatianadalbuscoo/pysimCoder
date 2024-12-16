@@ -34,6 +34,8 @@ static void init(python_block* block)
 
     PieCtrlRegs.PIECTRL.bit.ENPIE = 1;
     IER |= M_INT9;
+
+    init_buffer();
     //EINT;
 
 }

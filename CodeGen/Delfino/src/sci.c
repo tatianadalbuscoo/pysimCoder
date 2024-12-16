@@ -5,6 +5,9 @@
 #define FIFO_SIZE 4       // Numero massimo di float nella FIFO
 #define DATA_BUFFER 70
 
+#define SYNC_FLOAT 123456.789f  // Valore float per la sincronizzazione
+
+
 volatile float tx_buffer[DATA_BUFFER] = {}; // Buffer con un solo valore float
 volatile int tx_index = 0;           // Indice del buffer di float quello per inviare
 volatile int index_data_buffer = 0;  // Dove va inserito il prossimo dato quello per il buffer
@@ -12,9 +15,9 @@ volatile int number_float_buffer = 0; //Numero di float nel buffer da inviare al
 
 void add_signal_in_buffer(float value)
 {
-    // Se il buffer è pieno, ricomincia a scrivere dalla posizione 0
-    if (index_data_buffer >= sizeof(tx_buffer) / sizeof(tx_buffer[0])) {
-        index_data_buffer = 0; // Resetta l'indice per sovrascrivere
+    // Se il buffer è pieno, ricomincia a scrivere dalla posizione 1 (non sovrascrivere la sincronizzazione)
+    if (index_data_buffer >= DATA_BUFFER) {
+        index_data_buffer = 1; // Ricomincia a scrivere dopo il float di sincronizzazione
     }
 
     // Aggiungi il segnale al buffer nella posizione successiva disponibile
@@ -24,7 +27,19 @@ void add_signal_in_buffer(float value)
     number_float_buffer++;
 
     index_data_buffer++;
+    // Abilita l'interrupt SCIA TX, ad esempio
+    PieCtrlRegs.PIEIER9.bit.INTx2 = 1;
 }
+
+void init_buffer(void)
+{
+    tx_buffer[0] = SYNC_FLOAT; // Sincronizzazione come primo float
+    tx_index = 0;             // L'invio parte dal valore di sincronizzazione
+    index_data_buffer = 1;    // Scrittura comincia dopo il valore di sincronizzazione
+    number_float_buffer = 0;  // Nessun dato reale ancora nel buffer
+}
+
+
 
 
 // Configura GPIO42 e GPIO43 per SCIA
@@ -97,24 +112,36 @@ void PutToFifo(float floatToSend)
     SciaRegs.SCITXBUF.all = (block2 >> 8) & 0xFF; // Byte più significativo del secondo blocco
 }
 
-// ISR per la trasmissione
 interrupt void sciaTxFifoIsr(void)
 {
+    DINT;
+
     int i;
     for (i = 0; i < 4; i++) {
 
-        if (number_float_buffer <= 0) {
+        if (number_float_buffer <= 0 && tx_index > 0) {
+            PieCtrlRegs.PIEIER9.bit.INTx2 = 0;  // Disabilita l'interrupt TX di SCIA
+
             break;
         }
         if (tx_index >= DATA_BUFFER) {
             tx_index = 0;
         }
+
+        // Invia il valore dal buffer
         PutToFifo(tx_buffer[tx_index]);
+
+        // Aggiorna gli indici solo se non stiamo inviando il valore di sincronizzazione
+        if (tx_index != 0) {
+            number_float_buffer--;
+        }
         tx_index++;
-        number_float_buffer--;
     }
 
     SciaRegs.SCIFFTX.bit.TXFFINTCLR = 1;  // Pulisci il flag TX
     PieCtrlRegs.PIEACK.all |= PIEACK_GROUP9;
+
+    EINT;
 }
+
 
