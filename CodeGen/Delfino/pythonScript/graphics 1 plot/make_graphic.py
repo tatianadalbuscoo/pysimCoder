@@ -1,15 +1,24 @@
 import serial
 import struct
+import matplotlib.pyplot as plt
+import time
+
 
 porta_seriale = "COM4"
 baud_rate = 2000000
 SYNC_FLOAT = 123456.789  # Valore di sincronizzazione
 BUFFER_SIZE = 70  # Numero di float previsti per ogni ciclo
 
+# Liste per il grafico
+x_data = []  # Lista per i tempi
+y_data = []  # Lista per i valori
+
 try:
     # Apre la porta seriale
     ser = serial.Serial(porta_seriale, baud_rate, timeout=1)
     print(f"Connessione stabilita su {porta_seriale} a {baud_rate} baud.")
+
+    start_time = time.time()  # Inizio della registrazione dei tempi
 
     while True:
         # **Aspetta il valore di sincronizzazione**
@@ -24,7 +33,7 @@ try:
                 # Controlla se il valore e il valore di sincronizzazione
                 if abs(valore - SYNC_FLOAT) < 1e-3:  # Tolleranza per confronto float
                     print("Ricevuto valore di sincronizzazione! Inizio ciclo...")
-                    break  # Esce dal ciclo di attesa
+                    break
             else:
                 print("Timeout: Nessun dato ricevuto.")
 
@@ -43,6 +52,11 @@ try:
                 valore = struct.unpack('<f', raw_data)[0]
                 print(f"Ricevuto float: {valore}")
 
+                # Aggiungi il dato al grafico
+                elapsed_time = time.time() - start_time
+                x_data.append(elapsed_time)  # Tempo trascorso
+                y_data.append(valore)       # Valore ricevuto
+
                 float_count += 1
             else:
                 print("Timeout: Nessun dato ricevuto.")
@@ -54,6 +68,14 @@ try:
         else:
             print("Errore: Ciclo incompleto di float.")
 
+        # Aggiorna il grafico
+        plt.clf()  # Pulisce il grafico precedente
+        plt.plot(x_data, y_data, label="Segnale ricevuto")
+        plt.xlabel("Tempo (s)")
+        plt.ylabel("Valore del segnale")
+        plt.title("Segnale in tempo reale")
+        plt.legend()
+        plt.pause(0.01)  # Aggiorna il grafico
 except serial.SerialException as e:
     print(f"Errore: {e}")
 except KeyboardInterrupt:
@@ -61,3 +83,4 @@ except KeyboardInterrupt:
 finally:
     ser.close()
     print("Connessione seriale chiusa.")
+    plt.show()  # Mostra il grafico finale quando il programma termina
