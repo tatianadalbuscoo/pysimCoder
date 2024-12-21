@@ -1,5 +1,6 @@
 /*
 COPYRIGHT (C) 2022  Roberto Bucher (roberto.bucher@supsi.ch)
+MODIFIED BY Tatiana Dal Busco
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -22,8 +23,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 static void init(python_block* block)
 {
     char* pwm_output = (char*)block->str; 
-    int tbprd = block->intPar[0];         
-    double* u = block->u[0];              // Duty-cycle input (0.0 to 1.0 range)
+    int tbprd = block->intPar[0];  
+
+    // Duty-cycle input (0.0 to 1.0 range)
+    double* u = block->u[0];
 
     // Invert the input value, to have the percentage of high time incoming and not low time
     double duty_cycle = 1 - u[0];
@@ -43,7 +46,9 @@ static void inout(python_block* block)
 {
     char* pwm_output = (char*)block->str;
     int tbprd = block->intPar[0];
-    double* u = block->u[0];               // Duty-cycle input (0.0 to 1.0 range)
+
+    // Duty-cycle input (0.0 to 1.0 range)
+    double* u = block->u[0];
 
     // Invert the input value, to have the percentage of high time incoming and not low time
     double duty_cycle = 1 - u[0];
@@ -69,13 +74,16 @@ static void end(python_block* block)
 
 void epwmblk(int flag, python_block* block)
 {
-    if (flag == CG_OUT) {
+    if (flag == CG_OUT) 
+    {
         inout(block);
     }
-    else if (flag == CG_END) {
+    else if (flag == CG_END) 
+    {
         end(block);
     }
-    else if (flag == CG_INIT) {
+    else if (flag == CG_INIT) 
+    {
         init(block);
     }
 }

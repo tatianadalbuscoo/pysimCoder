@@ -1,5 +1,6 @@
 /*
 COPYRIGHT (C) 2022  Roberto Bucher (roberto.bucher@supsi.ch)
+MODIFIED BY Tatiana Dal Busco
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -21,21 +22,30 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 
 static void init(python_block* block)
 {
-    int pin = block->intPar[0];  // Number of pin
+
+    // Number of pin
+    int pin = block->intPar[0];
     Button_Init(pin);           
 }
 
 
 static void inout(python_block* block)
 {
-    int pin = block->intPar[0];  // Number of pin
-    double* y = block->y[0];     // y[0] is first output of the block
+    // Number of pin
+    int pin = block->intPar[0];
 
-    if (Button_IsPressed(pin)) {
-        y[0] = 1.0;  // output = 1 if button is pressed
+    // y[0] is first output of the block
+    double* y = block->y[0];
+
+    if (Button_IsPressed(pin)) 
+    {
+        // output = 1 if button is pressed
+        y[0] = 1.0;
     }
-    else {
-        y[0] = 0.0;  // output = 0 if button is not pressed
+    else 
+    {
+        // output = 0 if button is not pressed
+        y[0] = 0.0;
     }
 }
 
@@ -46,13 +56,17 @@ static void end(python_block* block)
 
 void inputGPIOblk(int flag, python_block* block)
 {
-    if (flag == CG_OUT) {  
+    if (flag == CG_OUT) 
+    {  
         inout(block);
     }
-    else if (flag == CG_END) {  
+    else if (flag == CG_END) 
+    {  
         end(block);
     }
-    else if (flag == CG_INIT) {  
+    else if (flag == CG_INIT) 
+    {  
         init(block);
     }
 }
+

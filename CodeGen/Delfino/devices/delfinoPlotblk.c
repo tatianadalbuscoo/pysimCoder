@@ -1,5 +1,6 @@
 /*
 COPYRIGHT (C) 2022  Roberto Bucher (roberto.bucher@supsi.ch)
+MODIFIED BY Tatiana Dal Busco
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -24,19 +25,18 @@ static void init(python_block* block)
 
     configure_gpio42_43_for_scia();
 
-    // Mappa gli interrupt SCIA nella tabella PIE
+    // Map SCIA interrupts into PIE table
     EALLOW;
     PieVectTable.SCIA_TX_INT = &sciaTxFifoIsr;
     EDIS;
 
-    scia_fifo_init();  // Inizializza la FIFO di SCIA
-    interrupt_fifo_setup();  // Configura gli interrupt e invia i dati iniziali
+    scia_fifo_init();
+    interrupt_fifo_setup();
 
     PieCtrlRegs.PIECTRL.bit.ENPIE = 1;
     IER |= M_INT9;
 
     init_buffer();
-    //EINT;
 
 }
 
@@ -56,15 +56,19 @@ static void end(python_block* block)
 
 }
 
+
 void delfinoPlotblk(int flag, python_block* block)
 {
-    if (flag == CG_OUT) {
+    if (flag == CG_OUT) 
+    {
         inout(block);
     }
-    else if (flag == CG_END) {
+    else if (flag == CG_END) 
+    {
         end(block);
     }
-    else if (flag == CG_INIT) {
+    else if (flag == CG_INIT) 
+    {
         init(block);
     }
 }

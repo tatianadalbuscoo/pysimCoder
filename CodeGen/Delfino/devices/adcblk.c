@@ -1,5 +1,6 @@
 /*
 COPYRIGHT (C) 2022  Roberto Bucher (roberto.bucher@supsi.ch)
+MODIFIED BY Tatiana Dal Busco
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -24,7 +25,7 @@ static void init(python_block* block)
     char* adc_module = (char*)block->str;
     int channel = block->intPar[0];
     int soc = block->intPar[1];
-    int generateInterrupt = block->intPar[2]; // Se il blocco genera interrupt
+    int generateInterrupt = block->intPar[2];
 
     // Initialize ADC
 #if STATE == 1 || STATE ==2
@@ -32,7 +33,7 @@ static void init(python_block* block)
 #endif   
 
 #if STATE == 3 || STATE == 4
-    ADC_Init_main3(adc_module, channel, soc, generateInterrupt);
+    ADC_Init_main3_4(adc_module, channel, soc, generateInterrupt);
 #endif
 
 }
@@ -41,7 +42,7 @@ static void inout(python_block* block)
 {
     char* adc_module = (char*)block->str;
     int soc = block->intPar[1];
-    int generateInterrupt = block->intPar[2]; // Se il blocco genera interrupt
+    int generateInterrupt = block->intPar[2];
     double* y = block->y[0];
 
     // Read ADC value
@@ -57,13 +58,16 @@ static void end(python_block* block)
 
 void adcblk(int flag, python_block* block)
 {
-    if (flag == CG_OUT) {
+    if (flag == CG_OUT) 
+    {
         inout(block);
     }
-    else if (flag == CG_END) {
+    else if (flag == CG_END) 
+    {
         end(block);
     }
-    else if (flag == CG_INIT) {
+    else if (flag == CG_INIT) 
+    {
         init(block);
     }
 }
