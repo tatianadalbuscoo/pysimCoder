@@ -25,7 +25,6 @@ static void init(python_block* block)
     char* adc_module = (char*)block->str;
     int channel = block->intPar[0];
     int soc = block->intPar[1];
-    int generateInterrupt = block->intPar[2];
 
     // Initialize ADC
 #if STATE == 1 || STATE ==2
@@ -33,6 +32,7 @@ static void init(python_block* block)
 #endif   
 
 #if STATE == 3 || STATE == 4
+    int generateInterrupt = block->intPar[2];
     ADC_Init_main3_4(adc_module, channel, soc, generateInterrupt);
 #endif
 

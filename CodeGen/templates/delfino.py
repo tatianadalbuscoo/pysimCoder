@@ -7,36 +7,51 @@ import json
 from supsisim.qtvers import *
 
 
-""" The following commands are provided:
-TO DO:
-    - Create a valid project for CCS
-        - This script works on linux environment and on wsl.
-        - If you press Settings -> Settings -> Configure in the pysimCoder menu you can configure the paths of the working folders (ti and C2000Ware_4_01_00_00), creating a config.json file.
-            - Without the config.json file it is not possible to generate the code to generate the project for CCS.
-            - If it does not find the paths necessary in the paths entered, which CCS uses, the project is not created and everything is cleaned.
-            - If it does not find the src files in the paths, it asks if you want to keep the config.json file or delete it. 
-            - Paths can be entered for both windows and wsl (Selectable from the browser button where to insert the path) eg:
+""" The following functionalities are implemented in this script:
+    - Create a valid project structure for Code Composer Studio (CCS).
+        - This script supports both Linux environments and WSL (Windows Subsystem for Linux).
+        - Paths to essential folders (TI, C2000Ware) can be configured via the PySimCoder GUI 
+          under Settings -> Settings -> Configure. This action generates a `config.json` file.
+            - Without this configuration file, the script cannot generate the CCS project structure.
+            - If required paths are missing, the project creation process will stop, and temporary files will be cleaned up.
+            - If source files are missing, the user will be prompted to either keep or delete the `config.json` file.
+            - Paths can be entered for both Windows and WSL, e.g.:
                 - C:\ti\c2000\C2000Ware_4_01_00_00
                 - /mnt/c/ti/c2000/C2000Ware_4_01_00_00
-        - Save these paths to a config.json file for future runs
-        - Organize all files in a hierarchy and create .project .cproject and .ccsproject files with user-entered paths.
-        - Generates the main file (cpu_timers_cpu01.c) that calls the functions that PysimCoder creates, changing their name.
-        - Include only files that use blocks in your project e.g.:
-            - If {model}.c contains the word inputGPIOblk includes: inputGPIOblk.c, button.c and button.h
-        
+        - Save configured paths into a `config.json` file for reuse in future runs.
+        - Automatically organize all files into a project hierarchy and generate the following CCS files:
+            - `.project`
+            - `.cproject`
+            - `.ccsproject`
+        - Generate a `main.c` file tailored to the selected operation mode. This file:
+            - Calls functions created by PySimCoder and adjusts function names dynamically.
+            - Includes only relevant files based on the blocks present in the project, e.g.:
+                - If `{model}.c` contains the word `inputGPIOblk`, it includes `inputGPIOblk.c`, `button.c`, and `button.h`.
+    - Handle project-specific configurations:
+        - Each project generates its own configuration file: `{model}_configuration.json`, 
+          which contains all the necessary settings for that specific project, including:
+            - Timer period, if applicable.
+            - ePWM output settings, if applicable.
+            - ADC synchronization details, if applicable.
+        - These configurations ensure that the generated CCS files and `main.c` are tailored to the project's requirements.
 """
 
+ 
 # Global variables
 
 # Saved if it is a linux environment or wsl
 isInWSL = False
 
+#################################################################################################################################################
+# Classes and functions to manage global and project configurations.
+#################################################################################################################################################
 
 class ConfigFile:
 
     """
     Class to represent a generic configuration file.
     """
+
 
     def __init__(self, name, extension="json"):
 
@@ -48,12 +63,15 @@ class ConfigFile:
         self.extension = extension
         self.path = f"{self.name}.{self.extension}"
 
+
     def get_name(self, with_extension=True):
 
         """
         Returns file name with/without extension.
         """
+
         return self.path if with_extension else self.name
+
 
     def exists(self):
 
@@ -62,6 +80,7 @@ class ConfigFile:
         """
 
         return os.path.isfile(self.path)
+
 
     def load(self):
 
@@ -74,6 +93,7 @@ class ConfigFile:
                 return json.load(file)
         return {}
 
+
     def save(self, data):
 
         """
@@ -83,6 +103,7 @@ class ConfigFile:
         with open(self.path, "w") as file:
             json.dump(data, file, indent=4)
 
+
     def delete(self):
 
         """
@@ -91,6 +112,7 @@ class ConfigFile:
 
         if self.exists():
             os.remove(self.path)
+
 
     def __str__(self):
 
@@ -107,6 +129,7 @@ class ProjectConfigWindow(QDialog):
     This class represents a project configuration window. It provides a user interface to select modes, 
     configure settings, and save them to a JSON configuration file.
     """
+
 
     def __init__(self, model):
         
@@ -130,6 +153,7 @@ class ProjectConfigWindow(QDialog):
         self.init_ui()
         self.set_initial_values()
 
+
     def load_config_file(self):
 
         """
@@ -140,6 +164,7 @@ class ProjectConfigWindow(QDialog):
             with open(self.config_file_path, "r") as file:
                 return json.load(file)
         return {}
+
 
     def set_initial_values(self):
 
@@ -185,9 +210,6 @@ class ProjectConfigWindow(QDialog):
                 self.epwm_output_label_mode2.setText("ePWM that triggers ADC:")
                 self.epwm_output_label_mode2.show()
                 self.epwm_output_combo_mode2.show()
-
-
-
 
 
     def init_ui(self):
@@ -266,8 +288,6 @@ class ProjectConfigWindow(QDialog):
         self.timer_period_input.hide()
         layout.addLayout(self.timer_period_layout)
 
-
-
         # Drop-down menu for ePWM Output selection (Mode 1)
         self.epwm_output_layout_mode1 = QHBoxLayout()
         self.epwm_output_label_mode1 = QLabel("ePWM Output (Mode 1):")
@@ -276,7 +296,6 @@ class ProjectConfigWindow(QDialog):
         self.epwm_output_combo_mode1.currentTextChanged.connect(self.update_save_button_state)
         self.epwm_output_combo_mode1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        # Usa QListView per abilitare lo scrolling senza le frecce in su/giù
         view1 = QListView()
         self.epwm_output_combo_mode1.setView(view1)
 
@@ -295,7 +314,6 @@ class ProjectConfigWindow(QDialog):
         self.epwm_output_combo_mode2.currentTextChanged.connect(self.update_save_button_state)
         self.epwm_output_combo_mode2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        # Usa QListView per abilitare lo scrolling senza le frecce in su/giù
         view2 = QListView()
         self.epwm_output_combo_mode2.setView(view2)
 
@@ -305,15 +323,6 @@ class ProjectConfigWindow(QDialog):
         self.epwm_output_label_mode2.hide()
         self.epwm_output_combo_mode2.hide()
         layout.addLayout(self.epwm_output_layout_mode2)
-
-
-
-
-
-
-
-
-
 
         # Spacer to push buttons down
         layout.addStretch()
@@ -330,6 +339,7 @@ class ProjectConfigWindow(QDialog):
 
         layout.addLayout(button_layout)
         self.setLayout(layout)
+
 
     def on_mode_changed(self, mode):
 
@@ -382,7 +392,6 @@ class ProjectConfigWindow(QDialog):
         self.update_save_button_state()
 
 
-
     def on_peripheral_changed(self, peripheral):
 
         """
@@ -396,7 +405,7 @@ class ProjectConfigWindow(QDialog):
             self.epwm_output_combo_mode1.hide()
             return
 
-        # Rimuove "-" dalla combo box periferica dopo la prima selezione
+        # Removes "-" after first selection
         if "-" in self.peripheral_combo.itemText(0):
             self.peripheral_combo.removeItem(0)
 
@@ -409,20 +418,19 @@ class ProjectConfigWindow(QDialog):
             self.timer_period_label.hide()
             self.timer_period_input.hide()
 
-            # Aggiunge "-" solo se non è già presente
+            # Adds "-" only if it is not already present
             if "-" not in [self.epwm_output_combo_mode1.itemText(i) for i in range(self.epwm_output_combo_mode1.count())]:
                 self.epwm_output_combo_mode1.insertItem(0, "-")
 
-            # Mostra la combo box e la etichetta
+            # Show combo box and label
             self.epwm_output_label_mode1.setText("ePWM that generates interrupt:")
             self.epwm_output_label_mode1.show()
             self.epwm_output_combo_mode1.show()
 
-            # Rimuove "-" immediatamente quando l'utente seleziona un'opzione diversa
+            # Removes "-" immediately when the user selects a different option
             self.epwm_output_combo_mode1.currentTextChanged.connect(self.handle_epwm_selection_mode1)
 
         self.update_save_button_state()
-
 
 
     def on_trigger_adc_changed(self, trigger):
@@ -438,7 +446,7 @@ class ProjectConfigWindow(QDialog):
             self.epwm_output_combo_mode2.hide()
             return
 
-        # Rimuove "-" dalla combo box trigger ADC dopo la prima selezione
+        # Removes "-" after first selection
         if "-" in self.trigger_adc_combo.itemText(0):
             self.trigger_adc_combo.removeItem(0)
 
@@ -451,45 +459,38 @@ class ProjectConfigWindow(QDialog):
             self.timer_period_label.hide()
             self.timer_period_input.hide()
 
-            # Aggiunge "-" solo se non è già presente
+            # Adds "-" only if it is not already present
             if "-" not in [self.epwm_output_combo_mode2.itemText(i) for i in range(self.epwm_output_combo_mode2.count())]:
                 self.epwm_output_combo_mode2.insertItem(0, "-")
 
-            # Mostra la combo box e la etichetta
+            # Show combo box and label
             self.epwm_output_label_mode2.setText("ePWM trigger ADC:")
             self.epwm_output_label_mode2.show()
             self.epwm_output_combo_mode2.show()
 
-            # Rimuove "-" immediatamente quando l'utente seleziona un'opzione diversa
+            # Removes "-" immediately when the user selects a different option
             self.epwm_output_combo_mode2.currentTextChanged.connect(self.handle_epwm_selection_mode2)
 
         self.update_save_button_state()
 
 
-
-
     def handle_epwm_selection_mode1(self, value):
+
         """
         Handles the selection of an ePWM option in Mode 1 and removes the '-' option.
         """
+
         if value != "-" and "-" in [self.epwm_output_combo_mode1.itemText(i) for i in range(self.epwm_output_combo_mode1.count())]:
             self.epwm_output_combo_mode1.removeItem(0)
 
     def handle_epwm_selection_mode2(self, value):
+
         """
         Handles the selection of an ePWM option in Mode 2 and removes the '-' option.
         """
+
         if value != "-" and "-" in [self.epwm_output_combo_mode2.itemText(i) for i in range(self.epwm_output_combo_mode2.count())]:
             self.epwm_output_combo_mode2.removeItem(0)
-
-
-
-
-
-
-
-
-
 
 
     def update_save_button_state(self):
@@ -497,10 +498,10 @@ class ProjectConfigWindow(QDialog):
         """
         Enable or disable the Save button based on the current state of the fields.
         Conditions to enable:
-        - Mode 1 + ePWM (Mode 1 Output)
         - Mode 1 + Timer + valid period
-        - Mode 2 + ePWM (Mode 2 Output)
+        - Mode 1 + ePWM + ePWM output
         - Mode 2 + Timer + valid period
+        - Mode 2 + ePWM + ePWM output
         """
 
         mode = self.mode_combo.currentText()
@@ -527,17 +528,15 @@ class ProjectConfigWindow(QDialog):
         self.save_button.setEnabled(False)
 
 
-
-
     def get_current_state(self):
     
         """
         Returns the current state based on the selected fields.
         Possible states:
         - 1: Mode 1 + Timer + valid period
-        - 2: Mode 1 + ePWM (Mode 1 ePWM Output)
+        - 2: Mode 1 + ePWM + ePWM output
         - 3: Mode 2 + Timer + valid period
-        - 4: Mode 2 + ePWM (Mode 2 ePWM Output)
+        - 4: Mode 2 + ePWM + ePWM output
         """
     
         mode = self.mode_combo.currentText()
@@ -564,7 +563,8 @@ class ProjectConfigWindow(QDialog):
     def cancel_and_close(self):
 
         """
-        Delete the project
+        Delete the project. 
+        The {model}_project folder.
         """
         
         project_dir = f"./{self.model}_project"
@@ -573,6 +573,7 @@ class ProjectConfigWindow(QDialog):
 
         self.reject()
 
+
     def closeEvent(self, event):
 
         """
@@ -580,14 +581,17 @@ class ProjectConfigWindow(QDialog):
         """
 
         self.cancel_and_close()
-        event.accept()  # Close the window
+
+        # Close the window
+        event.accept()
+
 
     def save_and_close(self):
+
         """
         Save the selected configuration to a JSON file.
         """
 
-        # Ottieni il mode selezionato
         selected_mode = self.mode_combo.currentText()
         selected_peripheral = None
         selected_trigger_adc = None
@@ -595,7 +599,7 @@ class ProjectConfigWindow(QDialog):
         selected_epwm_output_mode1 = None
         selected_epwm_output_mode2 = None
 
-        # Verifica il mode e assegna i valori pertinenti
+        # Check the mode and assign the relevant values
         if selected_mode == "1":
             selected_peripheral = self.peripheral_combo.currentText()
             if selected_peripheral == "Timer":
@@ -603,7 +607,9 @@ class ProjectConfigWindow(QDialog):
             elif selected_peripheral == "ePWM":
                 selected_epwm_output_mode1 = self.epwm_output_combo_mode1.currentText()
                 if selected_epwm_output_mode1 == "-":
-                    selected_epwm_output_mode1 = None  # Imposta a None se "-" è ancora selezionato
+
+                    # Set to None if "-" is still selected
+                    selected_epwm_output_mode1 = None
     
         elif selected_mode == "2":
             selected_trigger_adc = self.trigger_adc_combo.currentText()
@@ -612,17 +618,10 @@ class ProjectConfigWindow(QDialog):
             elif selected_trigger_adc == "ePWM":
                 selected_epwm_output_mode2 = self.epwm_output_combo_mode2.currentText()
                 if selected_epwm_output_mode2 == "-":
-                    selected_epwm_output_mode2 = None  # Imposta a None se "-" è ancora selezionato
 
-        # Debug per verificare i valori recuperati
-        print(f"DEBUG: selected_mode = {selected_mode}")
-        print(f"DEBUG: selected_peripheral = {selected_peripheral}")
-        print(f"DEBUG: selected_trigger_adc = {selected_trigger_adc}")
-        print(f"DEBUG: timer_period = {timer_period}")
-        print(f"DEBUG: selected_epwm_output_mode1 = {selected_epwm_output_mode1}")
-        print(f"DEBUG: selected_epwm_output_mode2 = {selected_epwm_output_mode2}")
+                    # Set to None if "-" is still selected
+                    selected_epwm_output_mode2 = None
 
-        # Preparazione dei dati di configurazione
         config_data = {
             "mode": selected_mode,
             "peripheral": selected_peripheral if selected_peripheral != "-" else None,
@@ -632,21 +631,11 @@ class ProjectConfigWindow(QDialog):
             "epwm_output_mode2": selected_epwm_output_mode2,
         }
 
-        # Debug per verificare i dati prima del salvataggio
-        print(f"DEBUG: config_data = {config_data}")
-
-        # Salva i dati usando la funzione save_project_config_file
+        # Save data
         save_project_config_file(self.model, config_data)
 
-        # Chiude la finestra con stato Accepted
+        # Closes the window with Accepted status
         self.accept()
-
-
-
-
-
-
-
 
 
 class ConfigWindow(QDialog):
@@ -673,6 +662,7 @@ class ConfigWindow(QDialog):
         self.compiler_version = config.get('compiler_version', 'ti-cgt-c2000_22.6.1.LTS')
 
         self.init_ui()
+
 
     def init_ui(self):
 
@@ -715,7 +705,7 @@ class ConfigWindow(QDialog):
         compiler_layout.addWidget(compiler_label)
         compiler_layout.addWidget(self.compiler_dropdown)
 
-        # Save button
+        # Save and Cancel buttons
         button_layout = QHBoxLayout()
         save_button = QPushButton("Save")
         save_button.clicked.connect(self.save_and_close)
@@ -734,6 +724,7 @@ class ConfigWindow(QDialog):
         # Set the main layout
         self.setLayout(layout)
 
+
     def browse_ti_path(self):
 
         """
@@ -743,6 +734,7 @@ class ConfigWindow(QDialog):
         path = QFileDialog.getExistingDirectory(self, "Select TI folder path")
         if path:
             self.ti_input.setText(path)
+
 
     def browse_c2000_path(self):
 
@@ -763,15 +755,20 @@ class ConfigWindow(QDialog):
         self.reject()
 
     def save_and_close(self):
+
         """
         Saves the configuration and closes the dialog with an "Accepted" status.
         """
-        save_general_config_file(
-            general_config,
-            self.ti_input.text(),
-            self.c2000_input.text(),
-            self.compiler_dropdown.currentText()
-        )
+
+        # Gather data from the form
+        config_data = {
+            "ti_path": self.ti_input.text(),
+            "c2000Ware_path": self.c2000_input.text(),
+            "compiler_version": self.compiler_dropdown.currentText(),
+        }
+
+        # Save using the new function
+        save_general_config_file(config_data)
         self.accept()
 
 
@@ -784,74 +781,87 @@ class ConfigWindow(QDialog):
         self.reject()
 
 
-# File name where to save the paths
+# File name where to save the paths.
+# It cannot be at the top of the code, it must be declared after the class declaration.
 general_config = ConfigFile("general_config")
 
 
-def save_general_config_file(config_file: ConfigFile, ti_path, c2000Ware_path, compiler_version):
+def save_general_config_file(config_data):
 
     """
     Saves the general configuration file with specified paths.
 
-    This function updates the configuration file with the provided `ti_path` 
-    and `c2000Ware_path`, and displays a confirmation message upon successful save.
+    This function creates or updates the configuration file with the provided data,
+    and displays a confirmation message upon successful save.
 
     Example Call:
     -------------
-    save_general_config_file(config_file, "path/to/TI", "path/to/C2000Ware")
+    save_general_config_file({
+        "ti_path": "path/to/TI",
+        "c2000Ware_path": "path/to/C2000Ware",
+        "compiler_version": "21.6.0.LTS"
+    })
 
-    Parameters
-    ----------
-    config_file     : The configuration file object to update.
-    ti_path         : Path to the TI folder.
-    c2000Ware_path  : Path to the C2000Ware folder.
+    Parameters:
+    -----------
+    config_data : dict -> Dictionary containing the configuration data to save.
 
-    Returns
-    -------
-    - 
+    Returns:
+    --------
+    -
 
     """
 
-    config_data = {
-        "ti_path": ti_path,
-        "c2000Ware_path": c2000Ware_path,
-        "compiler_version": compiler_version,
-    }
+    config_file = ConfigFile(name="general_config", extension="json")
     config_file.save(config_data)
-    QMessageBox.information(None, "General configs Saved", "Paths and compiler saved successfully!")
+
+    QMessageBox.information(None, "General Configs Saved", "Paths and compiler saved successfully!")
 
 
 def save_project_config_file(model, config_data):
+
     """
     Saves the project configuration file for a specific project.
 
     This function creates or updates the configuration file for a project 
     based on the given model name and configuration data.
-
+    
     Example Call:
     -------------
-    save_project_config_file("model_name", {"key": "value"})
+    save_project_config_file(
+        "example_project",
+        {
+            "mode": "1",
+            "peripheral": "Timer",
+            "trigger_adc": None,
+            "timer_period": 5000,
+            "epwm_output_mode1": None,
+            "epwm_output_mode2": None
+        }
+    )
 
-    Parameters
-    ----------
-    model       : The name of the project.
-    config_data : The configuration data to be saved in the JSON file.
+    Parameters:
+    -----------
+    model       : str -> The name of the project.
+    config_data : dict -> Dictionary containing the configuration data to save.
+
+    Returns:
+    --------
+    -
+
     """
 
+    # Project Directory
     project_dir = f"./{model}_project"
-    config_file_path = os.path.join(project_dir, f"{model}_configuration.json")
-
-    # Creazione della directory del progetto se non esiste
     if not os.path.exists(project_dir):
         os.makedirs(project_dir)
 
-    # Scrittura del file di configurazione JSON
-    with open(config_file_path, "w") as config_file:
-        json.dump(config_data, config_file, indent=4)
-
+    config_file = ConfigFile(name=os.path.join(project_dir, f"{model}_configuration"), extension="json")
+    config_file.save(config_data)
 
 
 def open_config_window():
+
     """
     Opens the configuration window for user input.
 
@@ -859,22 +869,26 @@ def open_config_window():
     -------------
     open_config_window()
 
-    Parameters
-    ----------
+    Parameters:
+    -----------
     -
 
-    Returns
-    -------
+    Returns:
+    --------
     bool    : True if the configuration was saved (Accepted), False otherwise (Rejected).
+
     """
 
     app = QApplication.instance() or QApplication([])
     config_window = ConfigWindow()
-    result = config_window.exec()  # Return QDialog.Accepted or QDialog.Rejected
+
+    # Return QDialog.Accepted or QDialog.Rejected
+    result = config_window.exec()
     return result == QDialog.Accepted
 
 
 def open_project_config_window(model):
+
     """
     Opens the project configuration window for a specific project.
     It collects and returns the configuration data if the user saves their changes.
@@ -883,20 +897,24 @@ def open_project_config_window(model):
     -------------
     open_project_config_window("example_model")
 
-    Parameters
-    ----------
-    model : The name of the project to configure.
+    Parameters:
+    -----------
+    model : str -> The name of the project to configure.
 
-    Returns
-    -------
+    Returns:
+    --------
     dict or None    : A dictionary containing the configuration data if saved, or `None` if the operation was canceled.
+
     """
 
     app = QApplication.instance() or QApplication([])
     project_config_window = ProjectConfigWindow(model)
-    result = project_config_window.exec()  # Returns QDialog.Accepted or QDialog.Rejected
+
+    # Returns QDialog.Accepted or QDialog.Rejected
+    result = project_config_window.exec()
 
     if result == QDialog.Accepted:
+
         # Build the configuration data
         mode = project_config_window.mode_combo.currentText()
         peripheral = project_config_window.peripheral_combo.currentText() if mode == "1" else None
@@ -926,7 +944,280 @@ def open_project_config_window(model):
 
     return None
 
+#################################################################################################################################################
+# Functions that check the paths entered in the global configuration and, in case of problems, indicate exactly what is wrong.
+#################################################################################################################################################
 
+def advise(title, message):
+
+    """
+    Displays a customizable confirmation dialog with a scrollable message and "Yes"/"No" buttons.
+
+    This function creates a modal dialog using PyQt, allowing users to read a detailed message
+    and make a choice between "Yes" and "No." The dialog includes a scrollable text area for long messages
+    and a title to provide context.
+
+    Example Call:
+    -------------
+    user_response = advise(
+        "Exit Confirmation",
+        "Are you sure you want to exit the application?\nAll unsaved changes will be lost."
+    )
+
+    Parameters:
+    -----------
+    title   : str -> The title of the dialog window.
+    message : str -> The message to display inside the scrollable text area.
+
+    Returns:
+    --------
+    bool    : True if the user clicks "Yes," False if the user clicks "No."
+
+    """
+
+    app = QApplication.instance() or QApplication([])
+    dialog = QDialog()
+    dialog.setWindowTitle(title)
+    dialog.resize(600, 400)
+
+    layout = QVBoxLayout()
+
+    label = QLabel(title)
+    label.setStyleSheet("font-weight: bold; font-size: 16px;")
+    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    scroll_area = QScrollArea()
+    scroll_area.setWidgetResizable(True)
+    text_widget = QTextEdit()
+    text_widget.setPlainText(message)
+    text_widget.setReadOnly(True)
+    scroll_area.setWidget(text_widget)
+
+    button_layout = QHBoxLayout()
+    yes_button = QPushButton("Yes")
+    no_button = QPushButton("No")
+
+    response = []
+
+    yes_button.clicked.connect(lambda: (response.append(True), dialog.accept()))
+    no_button.clicked.connect(lambda: (response.append(False), dialog.reject()))
+
+    button_layout.addWidget(yes_button)
+    button_layout.addWidget(no_button)
+
+    layout.addWidget(label)
+    layout.addWidget(scroll_area)
+    layout.addLayout(button_layout)
+
+    dialog.setLayout(layout)
+    dialog.exec()
+    return response[0] if response else False
+
+
+def update_paths(ti_path, c2000_path, compiler):
+
+    """
+    Updates paths based on the provided `ti_path`, `c2000_path`, and `compiler`.
+
+    This function generates a dictionary with paths required for project configuration.
+    The paths include linker files, header files, and source files, which are determined
+    based on the specified TI path, C2000Ware path, and compiler version.
+
+    Example Call:
+    -------------
+    paths = update_paths(
+        "C:/ti",
+        "C:/ti/c2000/C2000Ware_4_01_00_00",
+        "ti-cgt-c2000_22.6.1.LTS"
+    )
+
+    Parameters:
+    -----------
+    ti_path    : str -> The path where the TI folder is located.
+    c2000_path : str -> The path where the C2000Ware_4_01_00_00 folder is located.
+    compiler   : str -> The version of the compiler to be used (e.g., "ti-cgt-c2000_22.6.1.LTS").
+
+    Returns:
+    --------
+    dict       : A dictionary containing updated paths.
+
+    Example Output:
+    ---------------
+    {
+        "linker_path1": "C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd",
+        "linker_path2": "C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd",
+        "first_headers_path": "C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/include",
+        "second_headers_path": "C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/include",
+        "third_headers_path": "C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include",
+        "first_source_path": "C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/headers/source",
+        "second_source_path": "C:/ti/c2000/C2000Ware_4_01_00_00/device_support/f2837xd/common/source"
+    }
+    """
+    
+    # Determine third_headers_path based on the selected compiler
+    if compiler == "ti-cgt-c2000_22.6.1.LTS":
+        third_headers_path = os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include')
+    elif compiler == "ti-cgt-c2000_21.6.0.LTS":
+        third_headers_path = os.path.join(ti_path, 'ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include')
+
+    # Build the dictionary of paths
+    paths_to_check = {
+        "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
+        "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
+        "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
+        "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
+        "third_headers_path": third_headers_path,
+        "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
+        "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source'),
+    }
+
+    return paths_to_check
+
+
+def check_paths(ti_path, c2000_path, compiler):
+    
+    """
+    Verifies and updates required paths and files for the project configuration.
+
+    This function checks if essential paths and files, based on `ti_path`, `c2000_path`,
+    and `compiler`, are accessible. If the environment is WSL, paths are converted 
+    accordingly. Missing paths or files trigger user prompts to either update paths 
+    or delete the configuration file. The function loops until all paths and files 
+    are verified.
+
+    Required Files:
+    ---------------
+    - F2837xD_GlobalVariableDefs.c
+    - F2837xD_CpuTimers.c
+    - F2837xD_CodeStartBranch.asm
+    - F2837xD_DefaultISR.c
+    - F2837xD_Gpio.c
+    - F2837xD_Ipc.c
+    - F2837xD_PieCtrl.c
+    - F2837xD_PieVect.c
+    - F2837xD_SysCtrl.c
+    - F2837xD_usDelay.asm
+
+    Example Call:
+    -------------
+    check_paths(
+        "C:/ti",
+        "C:/ti/c2000/C2000Ware_4_01_00_00",
+        "ti-cgt-c2000_22.6.1.LTS"
+    )
+
+    Parameters:
+    -----------
+    ti_path    : str -> The path where the TI folder is located.
+    c2000_path : str -> The path where the C2000Ware_4_01_00_00 folder is located.
+    compiler   : str -> The version of the compiler to be used (e.g., "ti-cgt-c2000_22.6.1.LTS").
+
+    Returns:
+    --------
+    -
+
+    """
+
+    if isInWSL:
+        ti_path = convert_path_for_wsl(ti_path)
+        c2000_path = convert_path_for_wsl(c2000_path)
+
+    def update_paths(ti_path, c2000_path, compiler):
+       return {
+            "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
+            "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
+            "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
+            "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
+            "third_headers_path": os.path.join(
+            ti_path,
+                'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include' if compiler == "ti-cgt-c2000_22.6.1.LTS" 
+                else 'ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include'
+            ),
+            "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
+            "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source')
+        }
+
+    paths_to_check = update_paths(ti_path, c2000_path, compiler)
+
+    # Check if the paths exist.
+    while True:
+        
+        missing_paths = [f"{path_name}: {path}" for path_name, path in paths_to_check.items() if not os.path.exists(path)]
+
+        # If there are missing paths, ask to update them or delete the config.json file
+        if missing_paths:
+            missing_paths_str = "\n\n".join(missing_paths)
+            response = advise(
+                "The following paths are missing:",
+                f"{missing_paths_str}\n\nDo you want to change paths (Yes) or delete the {general_config.get_name()} file (No)"
+            )
+            if response:
+                open_config_window()
+
+                # Reload updated paths from new configuration
+                config = general_config.load()
+                ti_path_update = config.get('ti_path', '')
+                c2000_path_update = config.get('c2000Ware_path', '')
+
+                if isInWSL:
+                    ti_path_update = convert_path_for_wsl(ti_path_update)
+                    c2000_path_update = convert_path_for_wsl(c2000_path_update)
+
+                # Update the paths to check with the new values
+                paths_to_check = update_paths(ti_path_update, c2000_path_update, compiler)
+            else:
+                general_config.delete()
+                QMessageBox.information(None, "Configuration", f"{general_config.get_name()} has been deleted.")
+                return
+        else:
+            file_name = 'F2837xD_GlobalVariableDefs.c'
+            file_path = os.path.join(paths_to_check["first_source_path"], file_name)
+            missing_files = []
+            if not os.path.isfile(file_path):
+                missing_files.append(file_name)
+
+            required_files = [
+                'F2837xD_CpuTimers.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
+                'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
+                'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
+            ]
+
+            # Add any other missing files to the list
+            missing_files += [
+                file for file in required_files
+                if not os.path.isfile(os.path.join(paths_to_check["second_source_path"], file))
+            ]
+
+            if missing_files:
+                missing_message = "The following files are missing:\n\n"
+                for file in missing_files:
+                    if "GlobalVariable" in file:
+
+                        # Specific path for F2837xD_GlobalVariableDefs.c
+                        missing_message += f"{file} in {paths_to_check['first_source_path']}\n\n"
+                    else:
+
+                        # Path to other files in second_source_path
+                        missing_message += f"{file} in {paths_to_check['second_source_path']}\n\n"
+                missing_message += "\n\n"
+
+                response = advise(
+                    "Missing Files",
+                    f"{missing_message}Do you want to delete the {general_config.get_name()} file (Yes) or not (No)"
+                )
+
+                if response:
+                    delete_config_file()
+                    return 
+                else:
+                    return
+            else:
+                QMessageBox.information(None, "Paths and Files Check", "All required paths and files are present.")
+                break
+
+#################################################################################################################################################
+# Functions to run the project on wsl, windows and linux.
+#################################################################################################################################################
 
 def check_wsl_environment():
 
@@ -940,12 +1231,12 @@ def check_wsl_environment():
     -------------
     check_wsl_environment()
 
-    Parameters
-    ----------
+    Parameters:
+    -----------
     -
 
-    Returns
-    -------
+    Returns:
+    --------
     -
 
     """
@@ -964,11 +1255,11 @@ def convert_path_for_wsl(path):
 
     Example Call:
     -------------
-    new_path = convert_path_for_wsl(path)
+    wsl_path = convert_path_for_wsl("C:\\Users\\user\\path\\to\\file.c")
 
     Parameters:
     -----------
-    path       : The file path in Windows format (e.g., "C:\\Users\\user\\path").
+    path       : str -> The file path in Windows format (e.g., "C:\\Users\\user\\path\\to\\file.c").
 
     Returns:
     --------
@@ -1005,10 +1296,11 @@ def convert_path_for_windows(path):
     Example Call:
     -------------
     new_path = convert_path_for_windows(path)
+    windows_path = convert_path_for_windows("/mnt/c/Users/user/path/to/file.c")
 
     Parameters:
     -----------
-    path       : The file path in WSL format (e.g., "/mnt/c/Users/user/path").
+    path       : str -> The file path in WSL format (e.g., "/mnt/c/Users/user/path").
 
     Returns:
     --------
@@ -1029,10 +1321,14 @@ def convert_path_for_windows(path):
         return windows_path
     return path 
 
+#################################################################################################################################################
+# Functions to create the files needed to create a project for CCS (.project, .cproject, .ccsproject).
+#################################################################################################################################################
 
 def create_ccsproject_file(model, compiler):
 
-    """ Creates a .ccsproject file in XML format for a given project.
+    """
+    Creates a .ccsproject file in XML format for a given project.
 
     This function generates a `.ccsproject` file within a project-specific directory.
     The file is created in XML format and includes basic project options. The function ensures that the 
@@ -1040,11 +1336,12 @@ def create_ccsproject_file(model, compiler):
 
     Example Call:
     -------------
-    create_ccsproject_file("exampleModel")
+    create_ccsproject_file("exampleModel", "ti-cgt-c2000_22.6.1.LTS")
 
     Parameters:
     -----------
-    model      : The name of the project for which the `.ccsproject` file is being created.
+    model      : str -> The name of the project for which the `.ccsproject` file is being created.
+    compiler   : str -> The version of the compiler to be used (e.g., "ti-cgt-c2000_22.6.1.LTS").
 
     Returns:
     --------
@@ -1054,10 +1351,10 @@ def create_ccsproject_file(model, compiler):
     --------
     Input:
         model = "exampleModel"
+        compiler = "ti-cgt-c2000_22.6.1.LTS"
 
     Output:
         Creates a file `./exampleModel_project/.ccsproject` with the specified XML content.
-
     """
     
     project_dir = f"./{model}_project"
@@ -1108,8 +1405,8 @@ def create_project_file(model, c2000_path):
 
     Parameters:
     -----------
-    model      : The name of the project for which the `.project` file is being created.
-    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
+    model      : str -> The name of the project for which the `.project` file is being created.
+    c2000_path : str -> The path where the C2000Ware_4_01_00_00 folder is located.
 
     Returns:
     --------
@@ -1241,21 +1538,33 @@ def create_project_file(model, c2000_path):
 
 def create_cproject_file(model, ti_path, c2000_path, include, state, compiler, main4_nr_epwm_trigger_adc):
 
-    """ Creates a .cproject file in XML format for a given project.
+    """
+    Creates a .cproject file in XML format for a given project.
 
     This function generates a `.cproject` file in a project-specific directory.
     The file is created in XML format and includes detailed configuration settings. 
 
     Example Call:
     -------------
-    create_cproject_file("exampleModel", "C:/ti", "C:/ti/c2000/C2000Ware_4_01_00_00", "C:/Users/name/Desktop/untitled_gen/untitled_project/include")
+    create_cproject_file(
+        "exampleModel",
+        "C:/ti",
+        "C:/ti/c2000/C2000Ware_4_01_00_00",
+        "C:/Users/name/Desktop/untitled_gen/untitled_project/include",
+        1,
+        "ti-cgt-c2000_22.6.1.LTS",
+        3
+    )
 
     Parameters:
     -----------
-    model      : The name of the project for which the `.cproject` file is being created.
-    ti_path    : The path where the ti folder is located.
-    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
-    include    : The include directory of the project.
+    model      : str -> The name of the project for which the `.cproject` file is being created.
+    ti_path    : str -> The path where the TI folder is located.
+    c2000_path : str -> The path where the C2000Ware_4_01_00_00 folder is located.
+    include    : str -> The include directory of the project.
+    state      : int -> The current state of the project (If main1 is used the state will be = 1, and so on for mains 2,3 and 4), used in the conditional defines.
+    compiler   : str -> The version of the compiler to be used (e.g., "ti-cgt-c2000_22.6.1.LTS").
+    main4_nr_epwm_trigger_adc : int or None -> The number of ePWM triggers for ADC, used as a conditional define.
 
     Returns:
     --------
@@ -1268,10 +1577,12 @@ def create_cproject_file(model, ti_path, c2000_path, include, state, compiler, m
         ti_path = "C:/ti"
         c2000_path = "C:/ti/c2000/C2000Ware_4_01_00_00"
         include = "C:/Users/name/Desktop/untitled_gen/untitled_project/include"
+        state = 1
+        compiler = "ti-cgt-c2000_22.6.1.LTS"
+        main4_nr_epwm_trigger_adc = 3
 
     Output:
         Creates a file `./exampleModel_project/.cproject` with the specified XML content.
-
     """
 
     project_dir = f"./{model}_project"
@@ -1425,267 +1736,41 @@ def create_cproject_file(model, ti_path, c2000_path, include, state, compiler, m
     with open(cproject_file, 'w', encoding='utf-8') as file:
         file.write(cproject_content)
 
+#################################################################################################################################################
+# Functions that control the blocks inserted in the diagram.
+#################################################################################################################################################
 
-def advise(title, message):
+def check_blocks_list(blocks):
 
     """
-    Displays a customizable confirmation dialog with a scrollable message and "Yes"/"No" buttons.
+    Analyzes blocks and returns a list of functions used, including duplicates.
 
-    This function creates a modal dialog using PyQt, allowing users to read a detailed message
-    and make a choice between "Yes" and "No." The dialog includes a scrollable text area for long messages
-    and a title to provide context.
-
-    Parameters
-    ----------
-    title   : The title of the dialog window.
-    message : The message to display inside the scrollable text area.
-
-    Returns
-    -------
-    bool    : True if the user clicks "Yes," False if the user clicks "No."
-    """
-
-    app = QApplication.instance() or QApplication([])
-    dialog = QDialog()
-    dialog.setWindowTitle(title)
-    dialog.resize(600, 400)
-
-    layout = QVBoxLayout()
-
-    label = QLabel(title)
-    label.setStyleSheet("font-weight: bold; font-size: 16px;")
-    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-    scroll_area = QScrollArea()
-    scroll_area.setWidgetResizable(True)
-    text_widget = QTextEdit()
-    text_widget.setPlainText(message)
-    text_widget.setReadOnly(True)
-    scroll_area.setWidget(text_widget)
-
-    button_layout = QHBoxLayout()
-    yes_button = QPushButton("Yes")
-    no_button = QPushButton("No")
-
-    response = []
-
-    yes_button.clicked.connect(lambda: (response.append(True), dialog.accept()))
-    no_button.clicked.connect(lambda: (response.append(False), dialog.reject()))
-
-    button_layout.addWidget(yes_button)
-    button_layout.addWidget(no_button)
-
-    layout.addWidget(label)
-    layout.addWidget(scroll_area)
-    layout.addLayout(button_layout)
-
-    dialog.setLayout(layout)
-    dialog.exec()
-    return response[0] if response else False
-
-
-def update_paths(ti_path, c2000_path, compiler):
-
-    """ Updates paths based on the new values of `ti_path` and `c2000_path`.
-
-    This function creates a dictionary with updated paths using the provided
-    `ti_path` and `c2000_path` values. The paths are constructed for 
-    specific project files and directories, including linker, headers, and 
-    source files.
+    This function iterates through a list of blocks, extracts their associated 
+    functions (if available), and returns them as a list, preserving duplicates.
 
     Example Call:
     -------------
-    paths = update_paths("C:/ti","C:/ti/c2000/C2000Ware_4_01_00_00")
+    result = check_blocks_list(list_blocks)
 
     Parameters:
     -----------
-    ti_path    : The path where the ti folder is located.
-    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
+    blocks     : list -> List of blocks.
 
     Returns:
     --------
-    dict       : A dictionary containing updated paths.
+    list       : List of functions associated with the provided blocks, including duplicates.
 
     """
-    
-    # Determine third_headers_path based on the selected compiler
-    if compiler == "ti-cgt-c2000_22.6.1.LTS":
-        third_headers_path = os.path.join(ti_path, 'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include')
-    elif compiler == "ti-cgt-c2000_21.6.0.LTS":
-        third_headers_path = os.path.join(ti_path, 'ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include')
 
-    # Build the dictionary of paths
-    paths_to_check = {
-        "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
-        "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
-        "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
-        "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
-        "third_headers_path": third_headers_path,
-        "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
-        "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source'),
-    }
+    block_functions = []
 
-    return paths_to_check
+    for block in blocks:
+        block_function = getattr(block, 'fcn', 'N/A')
 
+        if block_function != 'N/A':
+            block_functions.append(block_function)
 
-def check_paths(ti_path, c2000_path, compiler):
-    
-    """ Verifies and updates required paths and files for the project configuration.
-
-    This function checks if essential paths and files, based on `ti_path` and `c2000_path`,
-    are accessible. If the environment is WSL, paths are converted accordingly.
-    Missing paths or files trigger user prompts to either update paths or delete the
-    configuration file. The function loops until all paths and files are verified.
-
-    Example Call:
-    -------------
-    check_paths("C:/ti","C:/ti/c2000/C2000Ware_4_01_00_00")
-
-    Parameters:
-    -----------
-    ti_path    : The path where the ti folder is located.
-    c2000_path : The path where the C2000Ware_4_01_00_00 folder is located.
-
-    Returns:
-    --------
-    -
-     
-    """
-
-    if isInWSL:
-        ti_path = convert_path_for_wsl(ti_path)
-        c2000_path = convert_path_for_wsl(c2000_path)
-
-    def update_paths(ti_path, c2000_path, compiler):
-       return {
-            "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
-            "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
-            "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
-            "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
-            "third_headers_path": os.path.join(
-            ti_path,
-                'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include' if compiler == "ti-cgt-c2000_22.6.1.LTS" 
-                else 'ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include'
-            ),
-            "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
-            "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source')
-        }
-
-    paths_to_check = update_paths(ti_path, c2000_path, compiler)
-
-    # Check if the paths exist.
-    while True:
-        
-        missing_paths = [f"{path_name}: {path}" for path_name, path in paths_to_check.items() if not os.path.exists(path)]
-
-        # If there are missing paths, ask to update them or delete the config.json file
-        if missing_paths:
-            missing_paths_str = "\n\n".join(missing_paths)
-            response = advise(
-                "The following paths are missing:",
-                f"{missing_paths_str}\n\nDo you want to change paths (Yes) or delete the {general_config.get_name()} file (No)"
-            )
-            if response:
-                open_config_window()
-
-                # Reload updated paths from new configuration
-                config = general_config.load()
-                ti_path_update = config.get('ti_path', '')
-                c2000_path_update = config.get('c2000Ware_path', '')
-
-                if isInWSL:
-                    ti_path_update = convert_path_for_wsl(ti_path_update)
-                    c2000_path_update = convert_path_for_wsl(c2000_path_update)
-
-                # Update the paths to check with the new values
-                paths_to_check = update_paths(ti_path_update, c2000_path_update, compiler)
-            else:
-                general_config.delete()
-                QMessageBox.information(None, "Configuration", f"{general_config.get_name()} has been deleted.")
-                return
-        else:
-            file_name = 'F2837xD_GlobalVariableDefs.c'
-            file_path = os.path.join(paths_to_check["first_source_path"], file_name)
-            missing_files = []
-            if not os.path.isfile(file_path):
-                missing_files.append(file_name)
-
-            required_files = [
-                'F2837xD_CpuTimers.c', 'F2837xD_CodeStartBranch.asm', 'F2837xD_DefaultISR.c',
-                'F2837xD_Gpio.c', 'F2837xD_Ipc.c', 'F2837xD_PieCtrl.c', 'F2837xD_PieVect.c',
-                'F2837xD_SysCtrl.c', 'F2837xD_usDelay.asm'
-            ]
-
-            # Add any other missing files to the list
-            missing_files += [
-                file for file in required_files
-                if not os.path.isfile(os.path.join(paths_to_check["second_source_path"], file))
-            ]
-
-            if missing_files:
-                missing_message = "The following files are missing:\n\n"
-                for file in missing_files:
-                    if "GlobalVariable" in file:
-
-                        # Specific path for F2837xD_GlobalVariableDefs.c
-                        missing_message += f"{file} in {paths_to_check['first_source_path']}\n\n"
-                    else:
-
-                        # Path to other files in second_source_path
-                        missing_message += f"{file} in {paths_to_check['second_source_path']}\n\n"
-                missing_message += "\n\n"
-
-                response = advise(
-                    "Missing Files",
-                    f"{missing_message}Do you want to delete the {general_config.get_name()} file (Yes) or not (No)"
-                )
-
-                if response:
-                    delete_config_file()
-                    return 
-                else:
-                    return
-            else:
-                QMessageBox.information(None, "Paths and Files Check", "All required paths and files are present.")
-                break
-
-
-def press_configure_button():
-    
-    """
-    Handles the configuration setup triggered by the configure button.
-
-    This function checks the environment (e.g., WSL detection) and opens a configuration 
-    window for the user to set or adjust settings. If the configuration is saved, it 
-    proceeds to validate paths for necessary resources.
-    
-    Example Call:
-    -------------
-    press_configure_button()
-
-    Parameters:
-    -----------
-    -
-
-    Returns:
-    --------
-    -
-    """
-
-    check_wsl_environment()
-    app = QApplication.instance() or QApplication([])
-
-    # Open the configuration window
-    if not open_config_window():
-        return
-
-    # Continue only if the configuration has been saved
-    config = general_config.load()
-    ti_path = config.get('ti_path', '')
-    c2000Ware_path = config.get('c2000Ware_path', '')
-    compiler = config.get('compiler_version', '')
-
-    check_paths(ti_path, c2000Ware_path, compiler)
+    return block_functions
 
 
 def check_blocks_set(blocks):
@@ -1698,15 +1783,16 @@ def check_blocks_set(blocks):
 
     Example Call:
     -------------
-    result = check_blocks_set(blocks)
+    result = check_blocks_set(list_blocks)
 
     Parameters:
     -----------
-    blocks : List of blocks.
+    blocks     : list -> List of blocks.
 
     Returns:
     --------
-    set    : Set of functions associated with the provided blocks.
+    set        : Set of functions associated with the provided blocks.
+
     """
 
     block_functions = set()
@@ -1716,38 +1802,6 @@ def check_blocks_set(blocks):
 
         if block_function != 'N/A':
             block_functions.add(block_function)
-
-    return block_functions
-
-
-def check_blocks_list(blocks):
-
-    """
-    Analyzes blocks and returns a list of functions used, including duplicates.
-
-    This function iterates through a list of blocks, extracts their associated 
-    functions (if available), and returns them as a list, preserving duplicates.
-
-    Example Call:
-    -------------
-    result = check_blocks_list(blocks)
-
-    Parameters:
-    -----------
-    blocks  : List of blocks.
-
-    Returns:
-    --------
-    list    : List of functions associated with the provided blocks, including duplicates.
-    """
-
-    block_functions = []
-
-    for block in blocks:
-        block_function = getattr(block, 'fcn', 'N/A')
-
-        if block_function != 'N/A':
-            block_functions.append(block_function)
 
     return block_functions
 
@@ -1764,24 +1818,24 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
 
     Example Call:
     -------------
-    files = find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir)
-
+    found_files = find_and_copy_files(
+        ["adcblk", "step", "outputGPIOblk"],                # List of function names
+        "C:/path/to/CodeGen",                               # Path to CodeGen directory
+        "C:/path/to/project/source",                        # Destination directory for .c files
+        "C:/path/to/project/include"                        # Destination directory for .h files
+    )
+    
     Parameters:
     -----------
-    function_names : List of function names for which files need to be located and copied.
-    CodeGen_path   : Path to the directory where the source and header files are located.
-    dest_c_dir     : Destination directory for `.c` files.
-    dest_h_dir     : Destination directory for `.h` files.
+    function_names : set -> Set of function names for which files need to be located and copied.
+    CodeGen_path   : str -> Path to the directory where the source and header files are located.
+    dest_c_dir     : str -> Destination directory for `.c` files.
+    dest_h_dir     : str -> Destination directory for `.h` files.
 
     Returns:
     --------
     dict           : A dictionary where each function is mapped to its associated `.c` and `.h` file paths (if found).
 
-    Example:
-        {
-            "adcblk": {"c_file": "/path/to/adcblk.c", "h_file": "/path/to/adc.h"},
-            "step": {"c_file": "/path/to/input.c", "h_file": None},
-        }
     """
 
     print(f"Function names to process: {function_names}")    
@@ -1830,35 +1884,255 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
     return found_files
 
 
-def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_output, adc_block):
-    """
-    Dispatches the generation of `main.c` based on the provided state.
+def check_epwm_block(functions_present_schema):
 
-    This function selects the appropriate generation routine for `main.c` 
-    depending on the given state and configuration parameters.
+    """
+    Validates the presence of the 'epwmblk' function in the provided schema.
+
+    This function checks the number of occurrences of the 'epwmblk' function in 
+    the input list. It identifies errors if the function is missing.
 
     Example Call:
     -------------
-    dispatch_main_generation(1, "path/to/main.c", "model_name", 100, 1500, "PWM1")
+    result = check_epwm_block(["epwmblk", "adcblk"])
 
     Parameters:
     -----------
-    state         : int
-        Current configuration state:
-        - 1: Mode 1 with Timer
-        - 2: Mode 1 with ePWM
-        - 3: Mode 2 with Timer
-        - 4: Mode 2 with ePWM
+    functions_present_schema : list -> A list of function names representing the current schema.
 
-    path_main    : Full path to the `main.c` file to be generated.
-    model        : Name of the model being used for generation.
-    timer_period : Timer period in microseconds (used in Timer-based modes).
-    tbprd        : value of register tbprd (for pwm period).
-    pwm_output   : Identifier of the PWM output (e.g., "PWM1", "PWM2").
+    Returns:
+    --------
+    int : Status code indicating the validation result:
+        - 1 : Error, 'epwmblk' is missing.
+        - 2 : Success, 'epwmblk' is present at least once.
+    """
+
+    epwm_count = functions_present_schema.count("epwmblk")
+
+    if epwm_count == 0:
+        return 1  # Error: 'epwmblk' is missing
+    else:
+        return 2  # Success: 'epwmblk' there is at least once
+
+
+def find_matching_pwm_output(blocks, target_function, epwm_output):
+
+    """
+    Searches for a block in the given list that matches the target function 
+    and the specified ePWM output.
+
+    This function iterates through the provided list of blocks to find the first block 
+    that satisfies the following conditions:
+    - The block's function name (`fcn`) matches the specified `target_function`.
+    - The block's string parameter (`str`) matches the given `epwm_output`.
+
+    If a match is found, the function returns the block's first integer parameter and 
+    string parameter. If no match is found, it returns `(None, None)`.
+
+    Example Call:
+    -------------
+    result = find_matching_pwm_output(list_blocks, target_function="epwmblk", epwm_output="out1a")
+
+    # Output
+    result: (2000, 'out1a')
+
+    Parameters:
+    -----------
+    blocks : list ->
+        A list of block to search through. Each block is expected to have:
+        - `fcn` : str -> The function name of the block.
+        - `intPar` : list[int] -> A list of integer parameters associated with the block.
+        - `str` : str -> A string parameter associated with the block.
+    
+    target_function : str -> The name of the function to match within the blocks' `fcn` attribute.  
+    epwm_output : str -> The PWM output value to match within the blocks' `str` attribute.
+    
+    Returns:
+    --------
+    tuple
+        A tuple containing:
+        - pwm_period : int or None -> The first integer parameter of the matching block, if found.
+        - pwm_output : str or None -> The string parameter of the matching block, if found.
+
+        If no block matches the criteria, returns `(None, None)`.
+
+    """
+    for block in blocks:
+        if block.fcn == target_function:
+            pwm_period = block.intPar[0] if len(block.intPar) > 0 else None
+            pwm_output = block.str
+
+            if pwm_output == epwm_output:
+                return pwm_period, pwm_output  # Match found, return immediately
+
+    return None, None  # No match found
+
+
+def extract_adc_parameters(blocks, target_function):
+
+    """
+    Extracts ADC parameters from the blocks that match the target function.
+
+    This function searches through a list of blocks, identifies those that match the 
+    specified `target_function`, and extracts relevant ADC parameters. It filters 
+    only those blocks where `generateInterrupt` is set to 1. 
+
+    Example Call:
+    -------------
+
+    result = extract_adc_parameters(list_blocks, "adcblk")
+
+    # Example Output:
+    # result: {"module": "A", "soc": 0, "channel": 1}
+
+    Parameters:
+    -----------
+    blocks : list -> 
+        A list of blocks to search through. Each block is expected to have:
+        - `fcn` : str -> The function name of the block.
+        - `str` : str -> A string parameter associated with the block (e.g., ADC module).
+        - `intPar` : list[int] -> A list of integer parameters including:
+            - [0]: ADC channel (e.g., 1, 2, 3).
+            - [1]: SOC (start-of-conversion) index.
+            - [2]: Generate interrupt flag (1 for active, 0 otherwise).
+    
+    target_function : str -> The name of the function to match within the blocks' `fcn` attribute.
+
+    Returns:
+    --------
+    int or dict:
+        - -1 : No matching blocks found.
+        - -2 : Multiple matching blocks found.
+        - dict : A dictionary containing the extracted ADC parameters if a single match is found.
+            - "module" : str -> The ADC module (e.g., "A", "B", "C").
+            - "soc" : int -> The SOC index of the block.
+            - "channel" : int -> The ADC channel of the block.
+
+    """
+
+    matching_blocks = []
+
+    for block in blocks:
+
+        # Check if the block matches the target function
+        if block.fcn == target_function:
+
+            # Extract parameters
+            adc_module = block.str if len(block.str) > 0 else None
+            adc_channel = block.intPar[0] if len(block.intPar) > 0 else None
+            soc = block.intPar[1] if len(block.intPar) > 0 else None
+            generate_interrupt = block.intPar[2] if len(block.intPar) > 0 else None
+
+            # Filter for blocks with generateInterrupt == 1
+            if generate_interrupt == 1:
+                matching_blocks.append({
+                    "module": adc_module,
+                    "soc": soc,
+                    "channel": adc_channel
+                })
+
+    # Handle return cases
+    if len(matching_blocks) == 0:
+        return -1  # No matching blocks
+    elif len(matching_blocks) > 1:
+        return -2  # Multiple matching blocks
+    else:
+        return matching_blocks[0]  # Single matching block
+
+#################################################################################################################################################
+# Functions that manage and generate the different main.
+#################################################################################################################################################
+
+def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_output, adc_block):
+
+    """
+    Dispatches the generation of `main.c` based on the provided state.
+
+    This function determines which specific function to call for generating 
+    the `main.c` file based on the provided `state`.
+
+    Example Calls:
+    --------------
+    # State 1: Mode 1 with Timer
+    dispatch_main_generation(
+        state=1,
+        path_main="path/to/main.c",
+        model="exampleModel",
+        timer_period=1000,
+        tbprd=None,
+        pwm_output=None,
+        adc_block=None
+    )
+
+    # State 2: Mode 1 with ePWM
+    dispatch_main_generation(
+        state=2,
+        path_main="path/to/main.c",
+        model="exampleModel",
+        timer_period=None,
+        tbprd=2000,
+        pwm_output="out1a",
+        adc_block=None
+    )
+
+    # State 3: Mode 2 with Timer and ADC
+    dispatch_main_generation(
+        state=3,
+        path_main="path/to/main.c",
+        model="exampleModel",
+        timer_period=5000,
+        tbprd=None,
+        pwm_output=None,
+        adc_block={"module": "A", "soc": 0, "channel": 3}
+    )
+
+    # State 4: Mode 2 with ePWM and ADC
+    dispatch_main_generation(
+        state=4,
+        path_main="path/to/main.c",
+        model="exampleModel",
+        timer_period=None,
+        tbprd=4000,
+        pwm_output="out2b",
+        adc_block={"module": "B", "soc": 1, "channel": 5}
+    )
+
+    Parameters:
+    -----------
+    state         : int ->
+        Defines the mode of operation:
+        - 1: Mode 1 with Timer interrupts.
+        - 2: Mode 1 with ePWM interrupts.
+        - 3: Mode 2 with Timer and ADC triggering.
+        - 4: Mode 2 with ePWM and ADC triggering.
+
+    path_main     : str -> Full path to the `main.c` file to be generated.
+
+    model         : str -> Name of the model being used for generation.
+
+    timer_period  : int or None ->
+        Timer period in microseconds.
+        Set to `None` if not applicable.
+
+    tbprd         : int or None -> 
+        Timer Base Period Register value for ePWM (defines the PWM period).
+        Set to `None` if not applicable.
+
+    pwm_output    : str or None -> 
+        Identifier of the ePWM output channel (e.g., "out1a", "out1b").
+        Set to `None` if not applicable.
+
+    adc_block     : dict or None ->
+        Configuration dictionary for ADC triggering. It should contain:
+        - "module": str -> ADC module (e.g., "A", "B", "C", "D").
+        - "soc": int -> ADC SOC (Start of Conversion) index.
+        - "channel": int -> ADC channel.
+        Set to `None` if not applicable.
 
     Returns:
     --------
     -
+
     """
 
     if state == 1:
@@ -1871,7 +2145,7 @@ def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_o
         generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block)
 
 
- # state 1
+# state 1
 def generate_main_mode1_timer(path_main, model, timer_period):
     
     """
@@ -1883,13 +2157,14 @@ def generate_main_mode1_timer(path_main, model, timer_period):
 
     Parameters:
     -----------
-    path_main    : Path to the output main.c file.
-    model        : Name of the model to integrate into the main program.
-    timer_period : Timer period in microseconds.
+    path_main    : str -> Path to the output main.c file.
+    model        : str -> Name of the model.
+    timer_period : int -> Timer period in microseconds.
 
     Returns:
     --------
     -
+
     """
 
     Tsamp = float(timer_period)/1000000
@@ -1897,30 +2172,31 @@ def generate_main_mode1_timer(path_main, model, timer_period):
     with open(path_main, 'w') as f:
         f.write("//###########################################################################\n")
         f.write("// FILE:   main.c\n")
-        f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
+        f.write("// AUTHOR: Tatiana Dal Busco\n")
+        f.write("// DATE:   December 2024\n")
         f.write("//###########################################################################\n\n")
     
         f.write('#include "F28x_Project.h"\n\n')
     
         # Function prototypes
-        f.write("__interrupt void cpu_timer0_isr(void);\n")
         f.write("void setup(void);\n")
         f.write("double get_run_time(void);\n")
-        f.write("double get_Tsamp(void);\n\n")
+        f.write("double get_Tsamp(void);\n")
+        f.write("__interrupt void cpu_timer0_isr(void);\n\n")
     
         # Global variables
-        f.write(f"static double Tsamp = {Tsamp};  // Intervallo temporale\n")
-        f.write("static double T = 0.0;         // Tempo corrente\n\n")
+        f.write(f"static double Tsamp = {Tsamp};  // Time range\n")
+        f.write("static double T = 0.0;         // Current time\n\n")
     
         # Main function
         f.write("void main(void)\n")
         f.write("{\n")
         f.write("    setup();\n")
         f.write("    while (1) {}\n")
-        f.write(f"    {model}_end();\n")
         f.write("}\n\n")
     
         # ISR of Timer0
+        f.write("// CPU Timer 0 ISR: Handles periodic timer interrupts\n")
         f.write("__interrupt void cpu_timer0_isr(void)\n")
         f.write("{\n")
         f.write("    CpuTimer0.InterruptCount++;\n")
@@ -1930,33 +2206,50 @@ def generate_main_mode1_timer(path_main, model, timer_period):
         f.write("}\n\n")
     
         # Initial setup
+        f.write("// Sets up system control, peripherals, interrupts, and Timer 0 for the application\n")
         f.write("void setup(void)\n")
-        f.write("{\n")
-        f.write("    InitSysCtrl();\n")
-        f.write("    InitGpio();\n")
-        f.write("    DINT;\n")
-        f.write("    InitPieCtrl();\n")
-        f.write("    IER = 0x0000;\n")
-        f.write("    IFR = 0x0000;\n")
+        f.write("{\n\n")
+        f.write("    // Initialize the system control: clock, PLL, and peripheral settings\n")
+        f.write("    InitSysCtrl();\n\n")
+        f.write("    // Initialize General Purpose Input/Output pins\n")
+        f.write("    InitGpio();\n\n")
+        f.write("    // Disable all CPU interrupts\n")
+        f.write("    DINT;\n\n")
+        f.write("    // Initialize the Peripheral Interrupt Expansion (PIE) control registers\n")
+        f.write("    InitPieCtrl();\n\n")
+        f.write("    // Clear all interrupt enable registers\n")
+        f.write("    IER = 0x0000;\n\n")
+        f.write("    // Clear all interrupt flag registers\n")
+        f.write("    IFR = 0x0000;\n\n")
+        f.write("    // Initialize the PIE vector table with default interrupt vectors\n")
         f.write("    InitPieVectTable();\n\n")
         f.write(f"    {model}_init();\n\n")
+        f.write("    // Map the CPU Timer 0 interrupt to its ISR (Interrupt Service Routine)\n")
         f.write("    EALLOW;\n")
         f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
         f.write("    EDIS;\n\n")
+        f.write("    // Initialize CPU Timers and configure Timer 0\n")
         f.write("    InitCpuTimers();\n")
         f.write(f"    ConfigCpuTimer(&CpuTimer0, 200, {timer_period});\n")
-        f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
-        f.write("    IER |= M_INT1;\n")
+        f.write("    CpuTimer0Regs.TCR.all = 0x4000; // Start Timer 0\n\n")
+        f.write("    // Enable CPU interrupt group 1\n")
+        f.write("    IER |= M_INT1;\n\n")
+        f.write("    // Enable PIE interrupt for Timer 0\n")
         f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n\n")
+        f.write("    // Enable global interrupts and real-time interrupts\n")
         f.write("    EINT;\n")
         f.write("    ERTM;\n\n")
         f.write("}\n\n")
     
+        # get_run_time function
+        f.write("// Returns the current runtime\n")
         f.write("double get_run_time(void)\n")
         f.write("{\n")
         f.write("    return T;\n")
         f.write("}\n\n")
     
+        # get_Tsamp function
+        f.write("// Returns the sampling time interval\n")
         f.write("double get_Tsamp(void)\n")
         f.write("{\n")
         f.write("    return Tsamp;\n")
@@ -1975,14 +2268,15 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
 
     Parameters:
     -----------
-    path_main   : Path to the output main.c file.
-    model       : Name of the model to integrate into the main program.
-    tbprd       : Timer base period register value for ePWM.
-    pwm_output  : Specifies the ePWM output channel (e.g., "out1a", "out1b").
+    path_main   : str -> Path to the output main.c file.
+    model       : str -> Name of the model to integrate into the main program.
+    tbprd       : int -> Timer base period register value for ePWM.
+    pwm_output  : str -> Specifies the ePWM output channel (e.g., "out1a", "out1b").
 
     Returns:
     --------
     -
+
     """
 
     pwm_period = (2 * int(tbprd)) / 1e8
@@ -2060,53 +2354,66 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         epwm_regs = "EPwm12Regs"
 
     with open(path_main, "w") as f:
+        f.write("//###########################################################################\n")
+        f.write("// FILE:   main.c\n")
+        f.write("// AUTHOR: Tatiana Dal Busco\n")
+        f.write("// DATE:   December 2024\n")
+        f.write("//###########################################################################\n\n")
+
         f.write('#include "F28x_Project.h"\n\n')
 
         # Function prototypes
-        f.write(f"__interrupt void {number_epwm}_isr(void);\n")
         f.write("void setup(void);\n")
         f.write("double get_run_time(void);\n")
-        f.write("double get_Tsamp(void);\n\n")
+        f.write("double get_Tsamp(void);\n")
+        f.write(f"__interrupt void {number_epwm}_isr(void);\n\n")
 
         # Global variables
-        f.write(f"static double Tsamp = {pwm_period}; // Intervallo temporale\n")
-        f.write("static double T = 0.0;         // Tempo corrente\n\n")
+        f.write(f"static double Tsamp = {pwm_period}; // Time range\n")
+        f.write("static double T = 0.0;         // Current time\n\n")
 
         # Main function
         f.write("void main(void)\n")
         f.write("{\n")
         f.write("    setup();\n")
         f.write("    while (1) {}\n")
-        f.write(f"    {model}_end();\n")
         f.write("}\n\n")
 
         # ISR for ePWM
+        f.write("// ePWM1 Interrupt Service Routine\n")
         f.write(f"__interrupt void {number_epwm}_isr(void)\n")
         f.write("{\n")
         f.write("    T += Tsamp;\n")
         f.write(f"    {model}_isr(T);\n\n")
         f.write("    // Clear the interrupt flag for ePWM\n")
         f.write(f"    {epwm_regs}.ETCLR.bit.INT = 1;\n\n")
+        f.write("    // Acknowledge the interrupt in PIE\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;\n")
         f.write("}\n\n")
 
         # Setup function
+        f.write("// Sets up system control, peripherals, interrupts, and ePWM for the application\n")
         f.write("void setup(void)\n")
-        f.write("{\n")
-        f.write("    InitSysCtrl();\n")
-        f.write("    InitGpio();\n")
-        f.write("    DINT;\n")
-        f.write("    InitPieCtrl();\n")
-        f.write("    IER = 0x0000;\n")
-        f.write("    IFR = 0x0000;\n")
+        f.write("{\n\n")
+        f.write("    // Initialize the system control: clock, PLL, and peripheral settings\n")
+        f.write("    InitSysCtrl();\n\n")
+        f.write("    // Initialize General Purpose Input/Output pins\n")
+        f.write("    InitGpio();\n\n")
+        f.write("    // Disable all CPU interrupts\n")
+        f.write("    DINT;\n\n")
+        f.write("   // Initialize the Peripheral Interrupt Expansion (PIE) control registers\n")
+        f.write("    InitPieCtrl();\n\n")
+        f.write("    // Clear all interrupt enable registers\n")
+        f.write("    IER = 0x0000;\n\n")
+        f.write("    // Clear all interrupt flag registers\n")
+        f.write("    IFR = 0x0000;\n\n")
+        f.write("    // Initialize the PIE vector table with default interrupt vectors\n")
         f.write("    InitPieVectTable();\n\n")
         f.write(f"    {model}_init();\n\n")
         f.write("    // Link ISR to ePWM1 interrupt\n")
         f.write("    EALLOW;\n")
         f.write(f"    PieVectTable.{number_epwm_capsLock}_INT = &{number_epwm}_isr;\n")
         f.write("    EDIS;\n\n")
-
-        # Interrupt configuration
         f.write("    // Enable ePWM interrupt in PIE group 3\n")
         f.write(f"    PieCtrlRegs.PIEIER3.bit.INTx{number_epwm_digit} = 1;\n\n")
         f.write("    // Enable CPU interrupt group 3\n")
@@ -2116,10 +2423,15 @@ def generate_main_mode1_epwm(path_main, model, tbprd, pwm_output):
         f.write("    ERTM;\n\n")
         f.write("}\n\n")
 
+        # get_run_time function
+        f.write("// Returns the current runtime\n")
         f.write("double get_run_time(void)\n")
         f.write("{\n")
         f.write("    return T;\n")
         f.write("}\n\n")
+    
+        # get_Tsamp function
+        f.write("// Returns the sampling time interval\n")
         f.write("double get_Tsamp(void)\n")
         f.write("{\n")
         f.write("    return Tsamp;\n")
@@ -2134,17 +2446,27 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
 
     Example Call:
     -------------
-    generate_main_mode2_timer(path_main="/path/to/main.c", model="exampleModel", timer_period=10000)
+    generate_main_mode2_timer(
+        path_main="/path/to/main.c", 
+        model="exampleModel", 
+        timer_period=10000, 
+        adc_block={"module": "A", "soc": 0, "channel": 3}
+    )
 
     Parameters:
     -----------
-    path_main    : The file path where the main.c file will be generated.
-    model        :  The name of the project for which the file is generated.
-    timer_period : The timer period in microseconds for sampling intervals.
+    path_main    : str -> The file path where the main.c file will be generated.
+    model        : str -> The name of the project for which the file is generated.
+    timer_period : int -> The timer period in microseconds for sampling intervals.
+    adc_block    : dict -> A dictionary containing ADC configuration with keys:
+        - "module": str -> The ADC module to use (e.g., "A", "B", "C", "D").
+        - "soc": int -> The Start of Conversion (SOC) index to use.
+        - "channel": int -> The ADC channel to use.
 
     Returns:
     --------
     -
+
     """
 
     Tsamp = float(timer_period)/1000000
@@ -2168,7 +2490,8 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
     with open(path_main, 'w') as f:
         f.write("//###########################################################################\n")
         f.write("// FILE:   main.c\n")
-        f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
+        f.write("// AUTHOR: Tatiana Dal Busco\n")
+        f.write("// DATE:   December 2024\n")
         f.write("//###########################################################################\n\n")
     
         f.write('#include "F28x_Project.h"\n\n')
@@ -2176,10 +2499,10 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
         # Function Prototypes
         f.write("// Function Prototypes\n")
         f.write("void setup(void);\n")
-        f.write(f"__interrupt void adc{module_lower}1_isr(void);\n")
-        f.write("__interrupt void cpu_timer0_isr(void);\n")
         f.write("double get_run_time(void);\n")
-        f.write("double get_Tsamp(void);\n\n")
+        f.write("double get_Tsamp(void);\n")
+        f.write(f"__interrupt void adc{module_lower}1_isr(void);\n")
+        f.write("__interrupt void cpu_timer0_isr(void);\n\n")
 
         # Defines
         f.write("// Defines\n")
@@ -2203,62 +2526,82 @@ def generate_main_mode2_timer(path_main, model, timer_period, adc_block):
         f.write("            bufferFull = 0;\n")
         f.write("        }\n")
         f.write("    }\n")
-        f.write(f"    {model}_end(); // Clean-up from PySimCoder blocks\n")
         f.write("}\n\n")
 
         # Timer ISR
+        f.write("// CPU Timer 0 ISR\n")
         f.write("__interrupt void cpu_timer0_isr(void)\n{\n")
-        f.write("    CpuTimer0.InterruptCount++;\n")
-        f.write(f"    Adc{module_lower}Regs.ADCSOCFRC1.bit.SOC{soc} = 1; // Force start ADC conversion on SOC0\n")
-        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1; // Acknowledge interrupt in PIE\n")
+        f.write("    CpuTimer0.InterruptCount++;\n\n")
+        f.write("    // Force start ADC conversion (It must be the last one, compared to the other adcs)\n")
+        f.write(f"    Adc{module_lower}Regs.ADCSOCFRC1.bit.SOC{soc} = 1;\n\n")
+        f.write("    // Acknowledge interrupt in PIE\n")
+        f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
         f.write("}\n\n")
 
         # ADC ISR
-        f.write("int cnt;\n")
-        f.write(f"__interrupt void adc{module_lower}1_isr(void)\n{{\n")
-        f.write("    cnt++;\n")
+        f.write("// ADC ISR\n")
+        f.write(f"__interrupt void adc{module_lower}1_isr(void)\n{{\n\n")
+        f.write("    // Store ADC result in buffer\n")
         f.write(f"    AdcResults[resultsIndex++] = Adc{module_lower}ResultRegs.ADCRESULT{soc};\n")
         f.write("    if (resultsIndex >= RESULTS_BUFFER_SIZE)\n")
         f.write("    {\n")
-        f.write("        resultsIndex = 0;\n")
-        f.write("        bufferFull = 1;\n")
-        f.write("    }\n")
-        f.write(f"    Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n")
+        f.write("        resultsIndex = 0; // Reset the buffer index\n")
+        f.write("        bufferFull = 1;   // Set the buffer full flag\n")
+        f.write("    }\n\n")
+        f.write("    // Clear ADC interrupt flag\n")
+        f.write(f"    Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n\n")
         f.write("    T += Tsamp;\n")
-        f.write(f"    {model}_isr(T);\n")
+        f.write(f"    {model}_isr(T);\n\n")
+        f.write("    // Acknowledge the interrupt in PIE\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
         f.write("}\n\n")
 
         # Setup Function
-        f.write("void setup(void)\n{\n")
-        f.write("    InitSysCtrl();\n")
-        f.write("    InitGpio();\n")
-        f.write("    DINT;\n")
-        f.write("    InitPieCtrl();\n")
-        f.write("    IER = 0x0000;\n")
-        f.write("    IFR = 0x0000;\n")
+        f.write("// Sets up system control, peripherals, interrupts, and ePWM for the application\n")
+        f.write("void setup(void)\n")
+        f.write("{\n\n")
+        f.write("    // Initialize the system control: clock, PLL, and peripheral settings\n")
+        f.write("    InitSysCtrl();\n\n")
+        f.write("    // Initialize General Purpose Input/Output pins\n")
+        f.write("    InitGpio();\n\n")
+        f.write("    // Disable all CPU interrupts\n")
+        f.write("    DINT;\n\n")
+        f.write("    // Initialize the Peripheral Interrupt Expansion (PIE) control registers\n")
+        f.write("    InitPieCtrl();\n\n")
+        f.write("    // Clear all interrupt enable registers\n")
+        f.write("    IER = 0x0000;\n\n")
+        f.write("    // Clear all interrupt flag registers\n")
+        f.write("    IFR = 0x0000;\n\n")
+        f.write("    // Initialize the PIE vector table with default interrupt vectors\n")
         f.write("    InitPieVectTable();\n\n")
         f.write(f"    {model}_init();\n\n")
+        f.write("    // Map ISRs to interrupt vectors\n")
         f.write("    EALLOW;\n")
         f.write("    PieVectTable.TIMER0_INT = &cpu_timer0_isr;\n")
         f.write(f"    PieVectTable.ADC{module}1_INT = &adc{module_lower}1_isr;\n")
         f.write("    EDIS;\n\n")
+        f.write("    // Configure CPU Timer 0\n")
         f.write("    InitCpuTimers();\n")
         f.write(f"    ConfigCpuTimer(&CpuTimer0, 200, {timer_period});\n")
-        f.write("    CpuTimer0Regs.TCR.all = 0x4000;\n\n")
-        f.write("    IER |= M_INT1;\n")
-        f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;\n")
-        f.write(f"    {interrupt}\n")
+        f.write("    CpuTimer0Regs.TCR.all = 0x4000; // Start Timer 0\n\n")
+        f.write("    // Enable PIE interrupts for Timer 0 and ADC\n")
+        f.write("    IER |= M_INT1;                     // Enable CPU interrupt group 1\n")
+        f.write("    PieCtrlRegs.PIEIER1.bit.INTx7 = 1; // Enable PIE interrupt for Timer 0\n")
+        f.write(f"    {interrupt}                       // Enable PIE interrupt for ADC\n\n")
+        f.write("    // Enable global and real-time interrupts\n")
         f.write("    EINT;\n")
         f.write("    ERTM;\n\n")
         f.write("}\n\n")
 
-        # Helper Functions
+        # get_run_time function
+        f.write("// Returns the current runtime\n")
         f.write("double get_run_time(void)\n")
         f.write("{\n")
         f.write("    return T;\n")
         f.write("}\n\n")
-
+    
+        # get_Tsamp function
+        f.write("// Returns the sampling time interval\n")
         f.write("double get_Tsamp(void)\n")
         f.write("{\n")
         f.write("    return Tsamp;\n")
@@ -2271,20 +2614,31 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block):
     """
     Generates the main.c file for Mode 2 with ePWM-based ADC triggering.
 
-    Example Call:
+     Example Call:
     -------------
-    generate_main_mode2_epwm(path_main="/path/to/main.c", model="exampleModel", tbprd=2000, pwm_output="out1a")
+    generate_main_mode2_epwm(
+        path_main="/path/to/main.c", 
+        model="exampleModel", 
+        tbprd=2000, 
+        pwm_output="out1a", 
+        adc_block={"module": "A", "soc": 0, "channel": 3}
+    )
 
     Parameters:
     -----------
-    path_main   : The file path where the main.c file will be generated.
-    model       : The name of the project for which the file is generated.
-    tbprd       : Time-base period for ePWM in clock cycles.
-    pwm_output  : The ePWM output channel (e.g., "out1a", "out2b") used for ADC triggering.
+    path_main   : str -> The file path where the main.c file will be generated.
+    model       : str -> The name of the project for which the file is generated.
+    tbprd       : int -> Time-base period for ePWM in clock cycles.
+    pwm_output  : str -> The ePWM output channel (e.g., "out1a", "out2b") used for ADC triggering.
+    adc_block   : dict -> A dictionary containing ADC configuration with keys:
+        - "module": str -> The ADC module to use (e.g., "A", "B", "C", "D").
+        - "soc": int -> The Start of Conversion (SOC) index to use.
+        - "channel": int -> The ADC channel to use.
 
     Returns:
     --------
     -
+
     """
 
     pwm_period = (2 * int(tbprd)) / 1e8
@@ -2341,14 +2695,15 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block):
         interrupt = "PieCtrlRegs.PIEIER1.bit.INTx4 = 1;"
 
     with open(path_main, "w") as f:
+
         f.write("//###########################################################################\n")
-        f.write("// FILE:   adc_soc_epwm_cpu01.c\n")
-        f.write("// TITLE:  CPU Timers Example for F2837xD.\n")
+        f.write("// FILE:   main.c\n")
+        f.write("// AUTHOR: Tatiana Dal Busco\n")
+        f.write("// DATE:   December 2024\n")
         f.write("//###########################################################################\n\n")
     
         # Included Files
-        f.write("// Included Files\n")
-        f.write('#include "F28x_Project.h"\n')
+        f.write('#include "F28x_Project.h"\n\n')
     
         # Function Prototypes
         f.write("// Function Prototypes\n")
@@ -2367,8 +2722,8 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block):
         f.write("Uint16 AdcResults[RESULTS_BUFFER_SIZE];\n")
         f.write("Uint16 resultsIndex;\n")
         f.write("volatile Uint16 bufferFull;\n")
-        f.write(f"static double Tsamp = {pwm_period}; // Intervallo temporale\n")
-        f.write("static double T = 0.0;         // Tempo corrente\n\n")
+        f.write(f"static double Tsamp = {pwm_period}; // Time range\n")
+        f.write("static double T = 0.0;        // Current time\n\n")
     
         # Main Function
         f.write("void main(void)\n")
@@ -2381,205 +2736,166 @@ def generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block):
         f.write(f"// adc{module_lower}1_isr - Read ADC Buffer in ISR\n")
         f.write(f"// Everytime ADC complete a conversion, the value is memorized in the AdcResults buffer.\n")
         f.write(f"interrupt void adc{module_lower}1_isr(void)\n")
-        f.write("{\n")
+        f.write("{\n\n")
+        f.write("   // Store ADC result in buffer\n")
         f.write(f"    AdcResults[resultsIndex++] = Adc{module_lower}ResultRegs.ADCRESULT{soc};\n")
         f.write("    if(RESULTS_BUFFER_SIZE <= resultsIndex)\n")
         f.write("    {\n")
-        f.write("        resultsIndex = 0;\n")
-        f.write("        bufferFull = 1;\n")
+        f.write("        resultsIndex = 0; // Reset the buffer index\n")
+        f.write("        bufferFull = 1;   // Mark the buffer as full\n")
         f.write("    }\n\n")
-        f.write(f"    Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n\n")
+        f.write("   // Clear ADC interrupt flag\n")
+        f.write(f"    Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1;\n\n")
         f.write("    // Check if overflow has occurred\n")
         f.write(f"    if(1 == Adc{module_lower}Regs.ADCINTOVF.bit.ADCINT1)\n")
         f.write("    {\n")
-        f.write(f"        Adc{module_lower}Regs.ADCINTOVFCLR.bit.ADCINT1 = 1; //clear INT1 overflow flag\n")
-        f.write(f"        Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag\n")
+        f.write(f"        Adc{module_lower}Regs.ADCINTOVFCLR.bit.ADCINT1 = 1; // Clear overflow flag\n")
+        f.write(f"        Adc{module_lower}Regs.ADCINTFLGCLR.bit.ADCINT1 = 1; // Clear interrupt flag\n")
         f.write("    }\n\n")
         f.write("    T += Tsamp;\n")
         f.write(f"    {model}_isr(T);\n\n")
+        f.write("    // Acknowledge interrupt in PIE\n")
         f.write("    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;\n")
         f.write("}\n\n")
 
         # Setup Function
+        f.write("// Sets up system control, peripherals, interrupts, and ePWM for the application\n")
         f.write("void setup(void)\n")
-        f.write("{\n")
-        f.write("    InitSysCtrl();       // Initialize the CPU\n")
-        f.write("    InitGpio();          // Initialize the GPIO\n\n")
-        f.write("    DINT;                // Disable interrupts\n\n")
-        f.write("    // Initialize the PIE control registers to their default state.\n")
+        f.write("{\n\n")
+        f.write("    // Initialize the system control: clock, PLL, and peripheral settings\n")
+        f.write("    InitSysCtrl();\n\n")
+        f.write("    // Initialize General Purpose Input/Output pins\n")
+        f.write("    InitGpio();\n\n")
+        f.write("    // Disable all CPU interrupts\n")
+        f.write("    DINT;\n\n")
+        f.write("    // Initialize the Peripheral Interrupt Expansion (PIE) control registers\n")
         f.write("    InitPieCtrl();\n\n")
-        f.write("    // Disable CPU interrupts and clear all CPU interrupt flags:\n")
-        f.write("    IER = 0x0000;\n")
+        f.write("    // Clear all interrupt enable registers\n")
+        f.write("    IER = 0x0000;\n\n")
+        f.write("    // Clear all interrupt flag registers\n")
         f.write("    IFR = 0x0000;\n\n")
-        f.write("    // Initialize the PIE vector table with pointers to the shell Interrupt\n")
+        f.write("    // Initialize the PIE vector table with default interrupt vectors\n")
         f.write("    InitPieVectTable();\n\n")
-        f.write("    // Map ISR functions\n")
+        f.write("    // Map the ADC ISR to the interrupt vector\n")
         f.write("    EALLOW;\n")
         f.write(f"    PieVectTable.ADC{module}1_INT = &adc{module_lower}1_isr;\n")
         f.write("    EDIS;\n\n")
+        f.write("    // Configure ePWM for ADC triggering\n")
         f.write("    EALLOW;\n")
-        f.write(f"    {epwmRegs}.ETSEL.bit.SOCAEN = 0; // Disable SOC on A group\n")
+        f.write(f"    {epwmRegs}.ETSEL.bit.SOCAEN = 0; // Disable SOC\n")
         f.write(f"    {epwmRegs}.ETSEL.bit.SOCASEL = 6;// Select SOC on up-down count\n")
         f.write(f"    {epwmRegs}.ETPS.bit.SOCAPRD = 1; // Generate pulse on 1st event\n")
         f.write("    EDIS;\n\n")
-        f.write(f"    {model}_init();      // Initialize blocks generated by PySimCoder\n\n")
+        f.write(f"    {model}_init();\n\n")
         f.write("    EALLOW;\n")
         f.write(f"    {epwmRegs}.TBCTL.bit.CTRMODE = 3; // freeze counter\n")
         f.write("    EDIS;\n\n")
-        f.write("    // Enable global Interrupts and higher priority real-time debug events:\n")
-        f.write("    IER |= M_INT1;     // Enable group 1 interrupts\n")
-        f.write("    EINT;              // Enable Global interrupt INTM\n")
-        f.write("    ERTM;              // Enable Global realtime interrupt DBGM\n\n")
-        f.write("    // Initialize results buffer\n")
+        f.write("    // Enable global and real-time interrupts\n")
+        f.write("    IER |= M_INT1;\n")
+        f.write("    EINT;\n")
+        f.write("    ERTM;\n\n")
+        f.write("    // Initialize the ADC results buffer\n")
         f.write("    for(resultsIndex = 0; resultsIndex < RESULTS_BUFFER_SIZE; resultsIndex++)\n")
         f.write("    {\n")
         f.write("        AdcResults[resultsIndex] = 0;\n")
         f.write("    }\n")
-        f.write("    resultsIndex = 0;\n")
-        f.write("    bufferFull = 0;\n\n")
-        f.write("    // enable PIE interrupt\n")
-        f.write(f"    {interrupt}\n")
+        f.write("    resultsIndex = 0; // Reset buffer index\n")
+        f.write("    bufferFull = 0;   // Reset buffer full flag\n\n")
+        f.write("    // Enable PIE interrupt for ADC\n")
+        f.write(f"    {interrupt}\n\n")
+        f.write("    // Enable Time Base Clock Sync\n")
         f.write("    EALLOW;\n")
         f.write("    CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;\n")
         f.write("    EDIS;\n\n")
-        f.write("    EALLOW;\n")
+        #f.write("    EALLOW;\n")
         f.write("}\n\n")
     
         # Loop Function
+        f.write("// Main loop - Continuously processes ADC conversions\n")
         f.write("void loop(void)\n")
-        f.write("{\n")
-        f.write("    //take conversions indefinitely in loop\n")
+        f.write("{\n\n")
         f.write("    do\n")
-        f.write("    {\n")
-        f.write("        //start ePWM\n")
+        f.write("    {\n\n")
+        f.write("        // Start ePWM for ADC triggering\n")
         f.write(f"        {epwmRegs}.ETSEL.bit.SOCAEN = 1;\n")
-        f.write(f"        {epwmRegs}.TBCTL.bit.CTRMODE = 2;\n\n")
-        f.write("        //wait while ePWM causes ADC conversions, which then cause interrupts,\n")
+        f.write(f"        {epwmRegs}.TBCTL.bit.CTRMODE = 2; // Set ePWM counter to up-down mode\n\n")
+        f.write("        // Wait until the buffer is full\n")
         f.write("        while(!bufferFull);\n")
-        f.write("        bufferFull = 0; //clear the buffer full flag\n\n")
-        f.write("        //stop ePWM\n")
-        f.write(f"        {epwmRegs}.ETSEL.bit.SOCAEN = 0;  //disable SOCA\n")
-        f.write(f"        {epwmRegs}.TBCTL.bit.CTRMODE = 3; //freeze counter\n\n")
-        f.write("        //at this point, AdcaResults[] contains a sequence of conversions from the selected channel\n")
-        f.write("        //software breakpoint, hit run again to get updated conversions\n")
-        #f.write("        asm(\"   ESTOP0\");\n")
+        f.write("        bufferFull = 0; // Reset buffer full flag\n\n")
+        f.write("        // Stop ePWM\n")
+        f.write(f"        {epwmRegs}.ETSEL.bit.SOCAEN = 0;  // Disable SOC\n")
+        f.write(f"        {epwmRegs}.TBCTL.bit.CTRMODE = 3; // Freeze ePWM counter\n\n")
+        f.write("        // At this point, AdcResults[] contains ADC conversion results\n\n")
         f.write("    } while(1);\n")
         f.write("}\n\n")
+
+        # get_run_time function
+        f.write("// Returns the current runtime\n")
         f.write("double get_run_time(void)\n")
         f.write("{\n")
         f.write("    return T;\n")
         f.write("}\n\n")
+    
+        # get_Tsamp function
+        f.write("// Returns the sampling time interval\n")
         f.write("double get_Tsamp(void)\n")
         f.write("{\n")
         f.write("    return Tsamp;\n")
         f.write("}\n")
     
+#################################################################################################################################################
+# Functions called in other scripts to generate the project and to set global configurations
+#################################################################################################################################################
 
-def check_epwm_block(functions_present_schema):
-
-    """
-    Validates the presence of the 'epwmblk' function in the provided schema.
-
-    This function checks the number of occurrences of the 'epwmblk' function in 
-    the input list. It identifies errors if the function is missing or appears 
-    multiple times, returning appropriate error codes or success status.
-
-    Example Call:
-    -------------
-    result = check_epwm_block(functions_present_schema=["epwmblk", "adcblk"])
-
-    Parameters:
-    -----------
-    functions_present_schema : A list of function names representing the current schema.
-
-    Returns:
-    --------
-    int : Status code indicating the validation result:
-        - 1 : Error, 'epwmblk' is missing.
-        - 2 : Error, 'epwmblk' is present more than once.
-        - 3 : Success, 'epwmblk' is present exactly once.
-    """
-
-    epwm_count = functions_present_schema.count("epwmblk")
-
-    if epwm_count == 0:
-        return 1  # Error: 'epwmblk' is missing
-    else:
-        return 2  # Success: 'epwmblk' there is at least once
-
-
-def find_matching_pwm_output(blocks, target_function, epwm_output_mode1):
-    """
-    Finds the first matching PWM output that corresponds to epwm_output_mode1.
-
-    Parameters:
-    -----------
-    blocks           : A list of blocks to search through.
-    target_function  : The function name to match within the blocks.
-    epwm_output_mode1: The PWM output to match.
-
-    Returns:
-    --------
-    tuple
-        A tuple containing:
-        - pwm_period : int or None
-            The first integer parameter of the block if available.
-        - pwm_output : str or None
-            The string parameter of the block if available.
-        Returns (None, None) if no match is found.
-    """
-    for block in blocks:
-        if block.fcn == target_function:
-            pwm_period = block.intPar[0] if len(block.intPar) > 0 else None
-            pwm_output = block.str
-
-            if pwm_output == epwm_output_mode1:
-                return pwm_period, pwm_output  # Match found, return immediately
-
-    return None, None  # No match found
-
-
-
-def extract_adc_parameters(blocks, target_function):
-
-    matching_blocks = []
-
-    for block in blocks:
-        # Check if the block matches the target function
-        if block.fcn == target_function:
-            # Extract parameters
-            adc_module = block.str if len(block.str) > 0 else None
-            adc_channel = block.intPar[0] if len(block.intPar) > 0 else None
-            soc = block.intPar[1] if len(block.intPar) > 0 else None
-            generate_interrupt = block.intPar[2] if len(block.intPar) > 0 else None
-
-            # Filter for blocks with generateInterrupt == 1
-            if generate_interrupt == 1:
-                matching_blocks.append({
-                    "module": adc_module,
-                    "soc": soc,
-                    "channel": adc_channel
-                })
-
-    # Handle return cases
-    if len(matching_blocks) == 0:
-        return -1  # No matching blocks
-    elif len(matching_blocks) > 1:
-        return -2  # Multiple matching blocks
-    else:
-        return matching_blocks[0]  # Single matching block
-
-
-
-def create_project_structure(model, blocks):
+def press_configure_button():
     
     """
-    Creates a project structure based on the specified project name.
+    Handles the configuration setup triggered by the configure button.
 
-    This function initializes the directory structure, configuration files, and main source file
-    required for a project. It validates the configuration, processes necessary files, and ensures
-    compatibility with Code Composer Studio (CCS) workflows. Additionally, it verifies environment 
-    specifics like WSL paths and handles potential schema or configuration errors.
+    This function checks the environment (e.g., WSL detection) and opens a configuration 
+    window for the user to set or adjust settings. If the configuration is saved, it 
+    proceeds to validate paths.
+    
+    Example Call:
+    -------------
+    press_configure_button()
+
+    Parameters:
+    -----------
+    -
+
+    Returns:
+    --------
+    -
+
+    """
+
+    check_wsl_environment()
+    app = QApplication.instance() or QApplication([])
+
+    # Open the configuration window
+    if not open_config_window():
+        return
+
+    # Continue only if the configuration has been saved
+    config = general_config.load()
+    ti_path_saved = config.get('ti_path', '')
+    c2000Ware_path_saved = config.get('c2000Ware_path', '')
+    compiler_saved = config.get('compiler_version', '')
+
+    check_paths(ti_path_saved, c2000Ware_path_saved, compiler_saved)
+
+
+def create_project_structure(model, blocks_list):
+    
+    """
+    Initializes the directory structure and configuration for a new project.
+
+    This function sets up the required directory structure, configuration files, and 
+    source files for a Code Composer Studio (CCS) project. It validates user settings, 
+    processes the provided schema (blocks_list), and ensures compatibility with the 
+    PysimCoder environment. It also checks for WSL-specific path requirements and 
+    handles configuration or schema errors.
 
     Example Call:
     -------------
@@ -2587,50 +2903,60 @@ def create_project_structure(model, blocks):
 
     Parameters:
     -----------
-    model  : The name of the project to be created.
-    blocks : A list of blocks defining the project structure, containing attributes like 'fcn', 'intPar', and 'str'.
+    model       : str -> The name of the project to be created.
+    blocks_list : list -> A list of blocks defining the project schema.
 
     Returns:
     --------
     -
-    """
-    triggerOnePWM = None
-    functions_name = check_blocks_set(blocks)
-    functions_present_schema = check_blocks_list(blocks)
 
+    """
+
+    triggerOnePWM = None
+
+    # Extracts functions from schema blocks
+    functions_name = check_blocks_set(blocks_list)
+    functions_present_schema = check_blocks_list(blocks_list)
+
+    # Initialize the PyQt application
     app = QApplication.instance() or QApplication([])
+
+    # Ensure the environment is properly configured for WSL
     check_wsl_environment()
 
-    # Define paths for config.json in the directory where {model}_gen will be created and inside {model}_gen
+    # Define paths for configuration files and check if global config exists
     parent_dir = os.path.dirname(os.path.abspath('.'))
     config_path_outside_gen = os.path.join(parent_dir, general_config.path)
 
-    # Check if config.json exists in the parent directory and copy it to {model}_gen, overwriting if needed
     if not os.path.isfile(config_path_outside_gen):
         QMessageBox.information(None, "File Status", f"{general_config.get_name()} not found in {parent_dir} .\nYou can set the paths under the menu settings -> settings -> configure")
         return 
     
-    # Load the configuration from the parent directory
+    # Load general configuration settings
     general_config.path = config_path_outside_gen
     config = general_config.load()
-    ti_path = config.get('ti_path', '')
+    ti_folder_path = config.get('ti_path', '')
     c2000Ware_path = config.get('c2000Ware_path', '')
     compiler_version = config.get('compiler_version', '')
 
+    # Convert paths if running under WSL
     if isInWSL:
 
-        # wsl path
-        if ti_path.startswith("/mnt/c/"):
+        # Wsl path
+        if ti_folder_path.startswith("/mnt/c/"):
 
             # Convert in a windows path
-            ti_path = convert_path_for_windows(ti_path)
-        else: 
-            ti_path = ti_path.replace('\\', '/')
+            ti_folder_path = convert_path_for_windows(ti_folder_path)
+        
+        # Path for windows, but it must be changed from \\ to / 
+        else:
+            ti_folder_path = ti_folder_path.replace('\\', '/')
         if c2000Ware_path.startswith("/mnt/c/"):
             c2000Ware_path = convert_path_for_windows(c2000Ware_path)
         else:
             c2000Ware_path = c2000Ware_path.replace('\\', '/')
 
+    # Define paths based on environment variables
     pysimCoder_path = os.environ.get('PYSUPSICTRL')
     CodeGen_path = pysimCoder_path + '/CodeGen'
     include_path = pysimCoder_path + '/CodeGen/Delfino/include'
@@ -2639,28 +2965,25 @@ def create_project_structure(model, blocks):
     devices_path = pysimCoder_path + '/CodeGen/Delfino/devices'
     targetConfigs_path = pysimCoder_path + '/CodeGen/Delfino/targetConfigs'
 
+    # Create project directory structure
     project_dir = f"./{model}_project"
     src_dir = os.path.join(project_dir, "src")
     include_dir = os.path.join(project_dir, "include")
     targetConfigs_dir = os.path.join(project_dir, "targetConfigs")
 
-    # Create the directories
     os.makedirs(src_dir, exist_ok=True)
     os.makedirs(include_dir, exist_ok=True)
     os.makedirs(targetConfigs_dir, exist_ok=True)
 
-    # Name of the file that will be moved (eg example.c)
+    # Move the source file to the src directory
     source_file = f'{model}.c'
     destination_file = os.path.join(src_dir, f'{model}.c')
-
-    # Check if {model}.c exists in the current directoy
     if os.path.exists(source_file):
         if os.path.exists(destination_file):
             os.remove(destination_file)
-
-        # Move {model}.c file in the src directory
         shutil.move(source_file, src_dir)
-
+    
+    # Open project configuration window and validate inputs
     config_data = open_project_config_window(model)
     if not config_data:
         QMessageBox.warning(None, "Project Cancelled", f"Project {model} has been cancelled.")
@@ -2671,8 +2994,8 @@ def create_project_structure(model, blocks):
     state = config_window.get_current_state()
     main_file = os.path.join(src_dir, "main.c")
 
-    # Controlla se c'è almeno un blocchetto epwm
-    if state == 2 or state ==4:
+    # Validate ePWM blocks for state 2 and 4
+    if state in [2, 4]:
         check_result = check_epwm_block(functions_present_schema)
 
         if check_result == 1:
@@ -2682,10 +3005,9 @@ def create_project_structure(model, blocks):
                 shutil.rmtree(project_dir)
             return
 
-
-        #roba dell'adc (probabilmente da togliere)
+        # Check ADC parameters if state is 4
         if state == 4:
-            adc_blocks = extract_adc_parameters(blocks, 'adcblk')
+            adc_blocks = extract_adc_parameters(blocks_list, 'adcblk')
             if (adc_blocks == None):
                 QMessageBox.warning(None, "Error", f"Module A, channel 0 is already busy managing synchronization. Project {model} has been cancelled.")
                 project_dir = f"./{model}_project"
@@ -2693,11 +3015,15 @@ def create_project_structure(model, blocks):
                     shutil.rmtree(project_dir)
                 return  
 
-    # Controlla se c'è il blocchetto che serve per gestire il Tempo
+    # Generate main file based on state
+    if state == 1:
+        timer_period = config_data.get("timer_period")
+        dispatch_main_generation(state, main_file, model, timer_period, None, None, None)
+
     if state == 2:
         epwm_output_mode1 = config_data.get("epwm_output_mode1")
 
-        tbprd, pwm_output = find_matching_pwm_output(blocks, "epwmblk", epwm_output_mode1)
+        tbprd, pwm_output = find_matching_pwm_output(blocks_list, "epwmblk", epwm_output_mode1)
 
         if tbprd is None and pwm_output is None:
             QMessageBox.warning(None, "Error", f"The epwm block with epwm output {epwm_output_mode1} that generates the interrupt is missing. Project {model} has been cancelled.")
@@ -2708,13 +3034,9 @@ def create_project_structure(model, blocks):
         
         dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output, None)
 
+    if state in [3, 4]:
+        result = extract_adc_parameters(blocks_list, 'adcblk')
 
-        
-    if state == 3 or state == 4:
-        # Call the function to extract the ADC block
-        result = extract_adc_parameters(blocks, 'adcblk')
-
-        # Handle the result based on the return value
         if result == -1:
             QMessageBox.warning(None, "Error", f"No ADC block with generate Interrupt == 1 was found. Project {model} has been cancelled.")
             project_dir = f"./{model}_project"
@@ -2729,19 +3051,14 @@ def create_project_structure(model, blocks):
                 shutil.rmtree(project_dir)
             return
  
-    if state == 1:
-        timer_period = config_data.get("timer_period")
-        dispatch_main_generation(state, main_file, model, timer_period, None, None, None)
-
     if state == 3:
         timer_period = config_data.get("timer_period")
         dispatch_main_generation(state, main_file, model, timer_period, None, None, result)
 
-
     if state == 4:
         epwm_output_mode2 = config_data.get("epwm_output_mode2")
 
-        tbprd, pwm_output = find_matching_pwm_output(blocks, "epwmblk", epwm_output_mode2)
+        tbprd, pwm_output = find_matching_pwm_output(blocks_list, "epwmblk", epwm_output_mode2)
 
         if tbprd is None and pwm_output is None:
             QMessageBox.warning(None, "Error", f"The epwm block with epwm output {epwm_output_mode2} that trigger the ADC is missing. Project {model} has been cancelled.")
@@ -2749,9 +3066,10 @@ def create_project_structure(model, blocks):
             if os.path.exists(project_dir):
                 shutil.rmtree(project_dir)
             return
-
         dispatch_main_generation(state, main_file, model, None, tbprd, pwm_output, result)
         
+        # Needed to figure out which epwm triggers the adc.
+        # Added as global define in .cproject file.
         if pwm_output == "out1a" or pwm_output == "out1b":
             triggerOnePWM = 5
 
@@ -2788,8 +3106,7 @@ def create_project_structure(model, blocks):
         elif pwm_output == "out12a" or pwm_output == "out12b":
             triggerOnePWM = 27
 
-
-
+    # Copy necessary files
     find_and_copy_files(functions_name,  CodeGen_path, src_dir, include_dir)
 
     # Copy the pyblock.h file
@@ -2813,7 +3130,7 @@ def create_project_structure(model, blocks):
     # create the .project, .cproject, .ccsproject files
     create_ccsproject_file(model, compiler_version)
     create_project_file(model, c2000Ware_path)
-    create_cproject_file(model, ti_path, c2000Ware_path, include_dir_absolute_path, state, compiler_version, triggerOnePWM)
+    create_cproject_file(model, ti_folder_path, c2000Ware_path, include_dir_absolute_path, state, compiler_version, triggerOnePWM)
 
     # Displays a message indicating that the project was created successfully
     QMessageBox.information(None, "Project Status", "Project successfully created")
