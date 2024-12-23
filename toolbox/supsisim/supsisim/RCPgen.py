@@ -10,7 +10,7 @@ The following class is provided:
 The following commands are provided:
 
   load_module    - Reads file source and loads it as a module
-  run_plugin     - run plugin if exists
+  run_plugin     - Run plugin (or a specific function of the plugin) if exists
   genCode        - Create  C code from BlockDiagram
   genMake        - Generate the Makefile for the C code
   detBlkSeq      - Get the right block sequence for simulation and RT
@@ -45,17 +45,28 @@ def load_module(module_path):
         The loaded module, or None if an error occurs during loading.
     """
 
+    if not os.path.exists(module_path):
+        return None  # Silently skip if the file does not exist
+
     try:
 
         # Extracts the module name from the path (removes the .py extension)
         module_name = os.path.basename(module_path).replace('.py', '')
         
         spec = importlib.util.spec_from_file_location(module_name, module_path)
-        module = importlib.util.module_from_spec(spec)
-        return module
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+        
+        else:
+            return None
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         print(f"Error: File {module_path} not found.")
+        return None
+    except ImportError as e:
+        print(f"ImportError: {e}")
         return None
     except Exception as e:
         print(f"Error loading module {module_path}: {e}")
@@ -88,52 +99,56 @@ def run_plugin(model, template, function_name=None, function_args=None):
     -
 
     """
+    try: 
 
-    template_path = environ.get('PYSUPSICTRL')
+        template_path = environ.get('PYSUPSICTRL')
     
-    # Removes the extension from the template file (.tmf)
-    base_name = os.path.splitext(template)[0]
+        # Removes the extension from the template file (.tmf)
+        base_name = os.path.splitext(template)[0]
     
-    script_path = os.path.join(template_path, 'CodeGen', 'templates', base_name + '.py')
+        script_path = os.path.join(template_path, 'CodeGen', 'templates', base_name + '.py')
 
-    # If specific .py file exists
-    if os.path.exists(script_path):
-
-        # Loads the module
+        # Check if the .py file exists; if not, exit silently
+        if not os.path.exists(script_path):
+            return
+        
+        # Load the module
         module = load_module(script_path)
+        if not module:
+            print(f"Failed to load the module '{script_path}'.")
+            return
 
-        if module:
+        # Execute the specified function if provided
+        if function_name:
+            if not hasattr(module, function_name):
+                print(f"Function '{function_name}' not found in the module '{script_path}'.")
+                return
+
+            func = getattr(module, function_name)
             try:
 
-                # Executes the module
-                spec = importlib.util.spec_from_file_location(module.__name__, script_path)
-                spec.loader.exec_module(module)
-
-                if function_name:
-
-                    # Execute the specified function
-                    if hasattr(module, function_name):
-                        func = getattr(module, function_name)
-                        
-                        try:
-                            # Call the function based on function_args
-                            if function_args is None:
-                                func()  # No arguments passed
-                            elif isinstance(function_args, dict):
-                                func(**function_args)
-                            elif isinstance(function_args, list):
-                                func(*function_args)
-
-                        except AttributeError as e:
-                            print(f"AttributeError: The function '{function_name}' encountered an attribute issue: {e}")
-                        except TypeError as e:
-                            print(f"TypeError: The arguments provided to the function '{function_name}' are incorrect: {e}")
-                        except Exception as e:
-                            print(f"An unexpected error occurred while calling '{function_name}': {e}")
+                # Call the function with the provided arguments
+                if function_args is None:
+                    func()
+                elif isinstance(function_args, dict):
+                    func(**function_args)
+                elif isinstance(function_args, list):
+                    func(*function_args)
+                else:
+                    raise TypeError("function_args must be a dict, list, or None.")
+            except AttributeError as e:
+                print(f"AttributeError: {e}")
+            except TypeError as e:
+                print(f"TypeError: {e}")
             except Exception as e:
-                print(f"An error occurred while executing: {e}")
+                print(f"An unexpected error occurred while calling '{function_name}': {e}")
         else:
-            print("Failed to load the module.")
+            print(f"Module '{script_path}' loaded but no function specified to execute.")
+
+    except EnvironmentError as e:
+        print(f"EnvironmentError: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 
 def genCode(model, Tsamp, blocks, template, rkstep=10):

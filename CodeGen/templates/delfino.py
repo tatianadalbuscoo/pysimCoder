@@ -1838,8 +1838,6 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
 
     """
 
-    print(f"Function names to process: {function_names}")    
-
     found_files = {}
     os.makedirs(dest_c_dir, exist_ok=True)
     os.makedirs(dest_h_dir, exist_ok=True)
