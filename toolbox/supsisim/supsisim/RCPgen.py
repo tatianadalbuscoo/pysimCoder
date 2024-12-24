@@ -436,7 +436,15 @@ def genCode(model, Tsamp, blocks, template, rkstep=10):
     # If the create_project_structure function exists, execute it.
     # If the function does not exist, the .py script associated with the .tmf is executed.
     # If there is no .py script associated with the .tmf nothing happens.
-    run_plugin(model, template, 'create_project_structure', [model, blocks])
+    try:
+
+        # Attempt to run `create_project_structure` if it exists
+        run_plugin(model, template, 'create_project_structure', [model, blocks])
+
+    except AttributeError:
+
+        # Execute the script without the specific function
+        run_plugin(None, template_name, None)
 
 
 def genMake(model, template, addObj=''):

@@ -34,6 +34,7 @@ and exceptions. The following scenarios are tested:
     - `test_run_plugin_attribute_error`:           Validates that `AttributeError` is caught and outputs the appropriate error message.
     - `test_run_plugin_type_error`:                Checks that `TypeError` is caught and outputs the appropriate error message.
     - `test_run_plugin_general_exception`:         Ensures general exceptions are caught and outputs the appropriate error message.
+    - `test_run_plugin_calls_create_project_structure`:    Confirms that `create_project_structure` is invoked when it exists in the plugin.
 
 Each test uses mocking to simulate various scenarios and validate the output and behavior of the functions.
 
@@ -299,6 +300,27 @@ class TestPluginExecution(unittest.TestCase):
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             run_plugin(self.model, self.template)
             self.assertEqual(mock_stdout.getvalue(), "")
+
+
+    @patch('os.path.exists', return_value=True)
+    @patch('importlib.util.spec_from_file_location')
+    def test_run_plugin_calls_create_project_structure(self, mock_spec_from_file, mock_path_exists):
+
+        """ Test that `create_project_structure` is executed when it exists in the plugin. """
+    
+        # Mock the module and the create_project_structure function
+        mock_spec = MagicMock()
+        mock_module = MagicMock()
+        mock_module.create_project_structure = MagicMock()
+        mock_spec.loader.exec_module = MagicMock()
+        mock_spec_from_file.return_value = mock_spec
+
+        with patch('importlib.util.module_from_spec', return_value=mock_module):
+            run_plugin('test_model', 'test_template.tmf', 'create_project_structure', ['test_model', 'test_blocks'])
+
+            # Assert the function was called
+            mock_module.create_project_structure.assert_called_once_with('test_model', 'test_blocks')
+
 
 if __name__ == '__main__':
     unittest.main()
