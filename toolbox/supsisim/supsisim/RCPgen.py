@@ -17,6 +17,7 @@ The following commands are provided:
   sch2blks       - Generate block list fron schematic
   
 """
+
 from numpy import nonzero, ones, asmatrix, size, array, zeros
 from os import environ
 import copy
@@ -121,7 +122,6 @@ def run_plugin(model, template, function_name=None, function_args=None):
         # Execute the specified function if provided
         if function_name:
             if not hasattr(module, function_name):
-                print(f"Function '{function_name}' not found in the module '{script_path}'.")
                 return
 
             func = getattr(module, function_name)

@@ -126,7 +126,16 @@ class RTgenDlg(QDialog):
         # If the press_configure_button function exists, execute it.
         # If the function does not exist, the .py script associated with the .tmf is executed.
         # If there is no .py script associated with the .tmf the "configure" button is not shown, so nothing is executed.
-        run_plugin(None, template_name , 'press_configure_button')
+
+        try:
+
+            # Attempt to run `press_configure_button` if it exists
+            run_plugin(None, template_name, 'press_configure_button')
+
+        except AttributeError:
+
+            # Execute the script without the specific function
+            run_plugin(None, template_name, None)
 
 
     def getObjs(self):
