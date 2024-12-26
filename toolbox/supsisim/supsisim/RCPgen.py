@@ -44,10 +44,12 @@ def load_module(module_path):
     -------
     module or None
         The loaded module, or None if an error occurs during loading.
+
     """
 
+    # Silently skip if the file does not exist
     if not os.path.exists(module_path):
-        return None  # Silently skip if the file does not exist
+        return None
 
     try:
 
@@ -77,12 +79,14 @@ def load_module(module_path):
 def run_plugin(model, template, function_name=None, function_args=None):
 
     """ 
-    Runs a plugin with the same name as the template (for example, run delfino.py if the template is delfino.tmf). 
-    If a function is specified with its arguments, runs the specified function.
-    If the function does not exist, the plugin is executed anyway. All statements outside the functions are executed.
-    If there is no .py script corresponding to the .tmf file, nothing is executed and nothing happens.
+    Runs a plugin with the same name as the template (for example, run delfino.py if the template is delfino.tmf).
+    - The module is only loaded if the `.py` file exists.
+    - If a function name is provided and exists in the module, it is executed with the provided arguments.
+    - If a function name is provided and it does not exist in the module, the entire plugin is executed. All statements outside of functions are executed.
+    - If no function is specified, the entire plugin is executed. All statements outside of functions are executed.
+    - If there is no `.py` script corresponding to the `.tmf` file, nothing happens, and no attempt 
+    is made to load the module.
 
-    
     Example Call:
     -------------
     run_plugin('model_name', 'template_name.tmf', 'create_project_structure', {'arg1': value1})
@@ -90,10 +94,10 @@ def run_plugin(model, template, function_name=None, function_args=None):
     
     Parameters
     ----------
-    model        : The name of the model.
-    template     : The template file (e.g., 'delfino.tmf') from which the corresponding Python script (e.g., 'delfino.py') is derived.
-    function_name: (optional) The name of the function to execute in the loaded script. If None, the entire script will be executed.
-    function_args: dict or list, (optional) Arguments to pass to the specified function. If None, the function will be called without arguments.
+    model        : str -> The name of the model.
+    template     : str -> The template file (e.g., 'delfino.tmf') from which the corresponding Python script (e.g., 'delfino.py') is derived.
+    function_name: (optional) str -> The name of the function to execute in the loaded script. If None, the entire script will be executed.
+    function_args: (optional) dict or list -> Arguments to pass to the specified function. If None, the function will be called without arguments.
     
     Returns
     -------
@@ -143,7 +147,7 @@ def run_plugin(model, template, function_name=None, function_args=None):
             except Exception as e:
                 print(f"An unexpected error occurred while calling '{function_name}': {e}")
         else:
-            print(f"Module '{script_path}' loaded but no function specified to execute.")
+            print(f"Module '{script_path}' loaded. Runs the entire plugin.")
 
     except EnvironmentError as e:
         print(f"EnvironmentError: {e}")
@@ -436,15 +440,8 @@ def genCode(model, Tsamp, blocks, template, rkstep=10):
     # If the create_project_structure function exists, execute it.
     # If the function does not exist, the .py script associated with the .tmf is executed.
     # If there is no .py script associated with the .tmf nothing happens.
-    try:
+    run_plugin(model, template, 'create_project_structure', [model, blocks])
 
-        # Attempt to run `create_project_structure` if it exists
-        run_plugin(model, template, 'create_project_structure', [model, blocks])
-
-    except AttributeError:
-
-        # Execute the script without the specific function
-        run_plugin(None, template_name, None)
 
 
 def genMake(model, template, addObj=''):
