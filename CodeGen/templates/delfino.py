@@ -1207,7 +1207,7 @@ def check_paths(ti_path, c2000_path, compiler):
                 )
 
                 if response:
-                    delete_config_file()
+                    general_config.delete()
                     return 
                 else:
                     return
