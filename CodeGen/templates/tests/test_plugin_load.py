@@ -4,6 +4,8 @@ import sys
 import unittest
 from io import StringIO
 from unittest.mock import patch
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'toolbox', 'supsisim', 'supsisim')))
+from RCPgen import load_module, run_plugin
 
 
 """
@@ -46,9 +48,6 @@ from unittest.mock import patch
 
 """
 
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'toolbox', 'supsisim', 'supsisim')))
-from RCPgen import load_module, run_plugin
 
 # Path to the directory where test.tmf and test.py are located
 template_dir = os.path.join(os.environ.get('PYSUPSICTRL', ''), "CodeGen", "templates")

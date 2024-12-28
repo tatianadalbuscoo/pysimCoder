@@ -4,6 +4,8 @@ import os
 import unittest
 from io import StringIO
 from unittest.mock import patch, MagicMock
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..')))
+from toolbox.supsisim.supsisim.RCPgen import load_module, run_plugin, genCode
 
 
 """
@@ -72,10 +74,6 @@ Each test uses mocking to simulate various scenarios and validate the output and
 
 """
 
-
-# Adjust the path to include the "pysimCoder" directory
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..')))
-from toolbox.supsisim.supsisim.RCPgen import load_module, run_plugin, genCode
 
 class TestPluginExecution(unittest.TestCase):
 
