@@ -7,7 +7,7 @@ import json
 from supsisim.qtvers import *
 
 
-""" The following functionalities are implemented in this script:
+r""" The following functionalities are implemented in this script:
     - Create a valid project structure for Code Composer Studio (CCS).
         - This script supports both Linux environments and WSL (Windows Subsystem for Linux).
         - Paths to essential folders (TI, C2000Ware) can be configured via the PySimCoder GUI 
@@ -1834,7 +1834,10 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
 
     Returns:
     --------
-    dict           : A dictionary where each function is mapped to its associated `.c` and `.h` file paths (if found).
+    dict           : A dictionary where each function is mapped to its associated `.c` and `.h` file paths. 
+                     The dictionary contains two keys for each function:
+                     - "c_files": A list of paths to the copied `.c` files.
+                     - "h_files": A list of paths to the copied `.h` files.
 
     """
 
@@ -1862,7 +1865,7 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
     }
 
     for function in function_names:
-        found_files[function] = {"c_file": None, "h_file": None}
+        found_files[function] = {"c_files": [], "h_files": []}
 
         # Determine which files to search (special or standard)
         files_to_search = special_cases.get(function, [f"{function}.c"])
@@ -1875,9 +1878,12 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
                     source_path = os.path.join(root, file_name)
                     dest_path = os.path.join(dest_dir, file_name)
                     shutil.copy(source_path, dest_path)
-                    key = "c_file" if file_name.endswith(".c") else "h_file"
-                    found_files[function][key] = dest_path
-                    break
+                    
+                    # Append the file to the correct list in found_files
+                    if file_name.endswith(".c"):
+                        found_files[function]["c_files"].append(dest_path)
+                    elif file_name.endswith(".h"):
+                        found_files[function]["h_files"].append(dest_path)
 
     return found_files
 
@@ -1955,6 +1961,7 @@ def find_matching_pwm_output(blocks, target_function, epwm_output):
         If no block matches the criteria, returns `(None, None)`.
 
     """
+
     for block in blocks:
         if block.fcn == target_function:
             pwm_period = block.intPar[0] if len(block.intPar) > 0 else None
