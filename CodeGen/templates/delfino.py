@@ -34,6 +34,7 @@ r""" The following functionalities are implemented in this script:
             - ePWM output settings, if applicable.
             - ADC synchronization details, if applicable.
         - These configurations ensure that the generated CCS files and `main.c` are tailored to the project's requirements.
+
 """
 
  
@@ -2148,6 +2149,8 @@ def dispatch_main_generation(state, path_main, model, timer_period, tbprd, pwm_o
         generate_main_mode2_timer(path_main, model, timer_period, adc_block)
     elif state == 4:
         generate_main_mode2_epwm(path_main, model, tbprd, pwm_output, adc_block)
+    else:
+        raise ValueError(f"Invalid state: {state}. Expected 1, 2, 3, or 4.")
 
 
 # state 1
