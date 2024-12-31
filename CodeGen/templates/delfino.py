@@ -1123,21 +1123,6 @@ def check_paths(ti_path, c2000_path, compiler):
         ti_path = convert_path_for_wsl(ti_path)
         c2000_path = convert_path_for_wsl(c2000_path)
 
-    def update_paths(ti_path, c2000_path, compiler):
-       return {
-            "linker_path1": os.path.join(c2000_path, 'device_support/f2837xd/common/cmd/2837xD_RAM_lnk_cpu1.cmd'),
-            "linker_path2": os.path.join(c2000_path, 'device_support/f2837xd/headers/cmd/F2837xD_Headers_nonBIOS_cpu1.cmd'),
-            "first_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/include'),
-            "second_headers_path": os.path.join(c2000_path, 'device_support/f2837xd/common/include'),
-            "third_headers_path": os.path.join(
-            ti_path,
-                'ccs1281/ccs/tools/compiler/ti-cgt-c2000_22.6.1.LTS/include' if compiler == "ti-cgt-c2000_22.6.1.LTS" 
-                else 'ccs1110/ccs/tools/compiler/ti-cgt-c2000_21.6.0.LTS/include'
-            ),
-            "first_source_path": os.path.join(c2000_path, 'device_support/f2837xd/headers/source'),
-            "second_source_path": os.path.join(c2000_path, 'device_support/f2837xd/common/source')
-        }
-
     paths_to_check = update_paths(ti_path, c2000_path, compiler)
 
     # Check if the paths exist.
