@@ -1833,7 +1833,7 @@ def find_and_copy_files(function_names, CodeGen_path, dest_c_dir, dest_h_dir):
 
     # Special rules for specific functions
     special_cases = {
-        "adcblk": ["adcblk.c", "adc.c", "adc.h"],
+        "adcblk": ["adcblk.c", "adc.c", "adcDelfino.h"],
         "inputGPIOblk": ["inputGPIOblk.c", "button.c", "button.h"],
         "outputGPIOblk": ["outputGPIOblk.c", "ledDelfino.c", "led.h"],
         "epwmblk": ["epwmblk.c", "epwm.c", "epwm.h"],

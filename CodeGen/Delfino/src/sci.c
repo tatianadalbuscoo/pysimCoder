@@ -84,10 +84,10 @@ void init_buffer(void)
 void configure_gpio42_43_for_scia(void)
 {
     EALLOW;
-    GpioCtrlRegs.GPBMUX1.bit.GPIO42 = 3;  // Configura GPIO42 per SCITXD
-    GpioCtrlRegs.GPBMUX1.bit.GPIO43 = 3;  // Configura GPIO43 per SCIRXD
-    GpioCtrlRegs.GPBGMUX1.bit.GPIO42 = 3; // Configura GPIO42 per SCITXD (alta priorità)
-    GpioCtrlRegs.GPBGMUX1.bit.GPIO43 = 3; // Configura GPIO43 per SCIRXD (alta priorità)
+    GpioCtrlRegs.GPBMUX1.bit.GPIO42 = 3;  // Configure GPIO42 for SCITXD
+    GpioCtrlRegs.GPBMUX1.bit.GPIO43 = 3;  // Configure GPIO43 for SCIRXD
+    GpioCtrlRegs.GPBGMUX1.bit.GPIO42 = 3; // Configure GPIO42 for SCITXD (high priority)
+    GpioCtrlRegs.GPBGMUX1.bit.GPIO43 = 3; // Configure GPIO43 for SCIRXD (high priority)
     EDIS;
 }
 
@@ -95,9 +95,9 @@ void configure_gpio42_43_for_scia(void)
 // Configuring the SCIA FIFO
 void scia_fifo_init(void)
 {
-    SciaRegs.SCICCR.all = 0x0007;      // 1 stop bit, no parity, 8 char bits
+    SciaRegs.SCICCR.all = 0x0007;           // 1 stop bit, no parity, 8 char bits
     SciaRegs.SCICTL1.all = 0x0003;
-    SciaRegs.SCICTL2.bit.TXINTENA = 1; // Enable TX interrupt
+    SciaRegs.SCICTL2.bit.TXINTENA = 1;      // Enable TX interrupt
 
     // Baud rate
     SciaRegs.SCIHBAUD.all = 0x00;
