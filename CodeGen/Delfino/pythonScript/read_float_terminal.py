@@ -23,7 +23,7 @@ def find_serial_port():
         print(f" {i + 1}: {port.device}")
 
     try:
-        choice = int(input(f"Select a port [1-{len(ports)}] (default: 1, The first available door): ").strip())
+        choice = int(input(f"Select a port [1-{len(ports)}] (default: 1, The first available port): ").strip())
         if 1 <= choice <= len(ports):
             return ports[choice - 1].device
     except ValueError:
