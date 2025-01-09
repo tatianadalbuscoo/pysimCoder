@@ -11,9 +11,7 @@ BUFFER_SIZE = 70  # Number of floats expected in each cycle
 def select_serial_port():
 
     """
-
     Prompt the user to select a serial port or automatically choose the first available.
-
     """
 
     ports = list_ports.comports()
